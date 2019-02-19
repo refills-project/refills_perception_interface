@@ -1,0 +1,17 @@
+<launch>
+  <arg name="json_file" default="$(find refills_rooming_in)/data/donbot_bremen/1_shelf.json" />
+  <arg name="owl_file" default="$(find refills_rooming_in)/data/donbot_bremen/1_shelf_pp.owl" />
+  <arg name="ceiling_height" default="2" />
+  <arg name="rgb_topic" default="/refills_wrist_camera/image_color" />
+  <arg name="realsense_topic" default="/rs_camera/color/camera_info" />
+
+  <include file="$(find refills_perception_interface)/launch/interface.launch">
+    <arg name="initial_beliefstate_owl" value="$(arg owl_file)" />
+    <arg name="json_file" value="$(arg json_file)" />
+    <arg name="ceiling_height" value="$(arg ceiling_height)" />
+    <arg name="rgb_topic" value="$(arg rgb_topic)" />
+    <arg name="realsense_topic" value="$(arg realsense_topic)" />
+    <arg name="robosherlock_sim" value="False" />
+  </include>
+
+</launch>
