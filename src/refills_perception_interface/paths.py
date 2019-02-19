@@ -31,7 +31,7 @@ class Paths(object):
         self.knowrob = knowrob
         self.ceiling_height = rospy.get_param('~ceiling_height')
 
-    def height_to_lin1_lin2(self, desired_height):
+    def _height_to_lin1_lin2(self, desired_height):
         """
         distributes desired height to the two linear joints equally.
         :type desired_height: float
@@ -44,14 +44,14 @@ class Paths(object):
         torso_lin_1 = min(max(0, relative_height - torso_lin_2), TORSO_LIN1_UPPER_LIMIT)
         return torso_lin_1, torso_lin_2
 
-    def get_joints(self, height, rotation):
+    def _get_joints(self, height, rotation):
         torso_lin1 = JointPosition()
         torso_lin1.name = 'Torso_lin1'
 
         torso_lin2 = JointPosition()
         torso_lin2.name = 'Torso_lin2'
 
-        torso_lin1.position, torso_lin2.position = self.height_to_lin1_lin2(height)
+        torso_lin1.position, torso_lin2.position = self._height_to_lin1_lin2(height)
 
         torso_rot_1 = JointPosition()
         torso_rot_1.name = 'Torso_rot_1'
@@ -104,7 +104,7 @@ class Paths(object):
         :rtype: PyKDL.Frame
         """
         if self.T_bf___cam_joint is None:
-            self.T_bf___cam_joint = msg_to_kdl(lookup_transform('base_link', 'torso_Schwenker_Cams'))
+            self.T_bf___cam_joint = msg_to_kdl(lookup_transform('base_link', 'camera_link'))
             self.T_bf___cam_joint.p[2] = 0
             self.T_bf___cam_joint.M = PyKDL.Rotation()
         return self.T_bf___cam_joint
@@ -133,10 +133,10 @@ class Paths(object):
         ):
             full_body_pose = FullBodyPosture()
             full_body_pose.base_pos = base_pose
-            if self.is_left(shelf_system_id):
-                full_body_pose.joints.extend(self.get_joints(torso_extension, radians(-rotation)))
-            else:
-                full_body_pose.joints.extend(self.get_joints(torso_extension, radians(rotation)))
+            # if self.is_left(shelf_system_id):
+            #     full_body_pose.joints.extend(self._get_joints(torso_extension, radians(-rotation)))
+            # else:
+            #     full_body_pose.joints.extend(self._get_joints(torso_extension, radians(rotation)))
             full_body_path.postures.append(full_body_pose)
 
         return full_body_path
@@ -169,14 +169,14 @@ class Paths(object):
         # TODO tune this number
         if self.is_left(shelf_system_id):
             if self.layer_too_low(shelf_layer_height):
-                joints = self.get_joints(MIN_CAM_HEIGHT + to_low_offset, radians(-65))
+                joints = self._get_joints(MIN_CAM_HEIGHT + to_low_offset, radians(-65))
             else:
-                joints = self.get_joints(torso_rot_1_height + other_offset, radians(-90))
+                joints = self._get_joints(torso_rot_1_height + other_offset, radians(-90))
         else:
             if self.layer_too_low(shelf_layer_height):
-                joints = self.get_joints(MIN_CAM_HEIGHT + to_low_offset, radians(65))
+                joints = self._get_joints(MIN_CAM_HEIGHT + to_low_offset, radians(65))
             else:
-                joints = self.get_joints(torso_rot_1_height + other_offset, radians(90))
+                joints = self._get_joints(torso_rot_1_height + other_offset, radians(90))
 
         # start base poses
 
@@ -232,9 +232,9 @@ class Paths(object):
         torso_rot_1_height = max(MIN_CAM_HEIGHT, torso_rot_1_height)
 
         if self.is_left(shelf_system_id):
-            joints = self.get_joints(torso_rot_1_height, radians(-65))
+            joints = self._get_joints(torso_rot_1_height, radians(-65))
         else:
-            joints = self.get_joints(torso_rot_1_height, radians(65))
+            joints = self._get_joints(torso_rot_1_height, radians(65))
 
         # TODO tune base bose
         facing_pose_on_layer = lookup_pose(shelf_layer_frame_id, facing_frame_id)
