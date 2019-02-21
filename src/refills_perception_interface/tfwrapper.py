@@ -111,7 +111,7 @@ def lookup_pose(target_frame, source_frame):
     """
     :type target_frame: str
     :type source_frame: str
-    :return: Transform from target_frame to source_frame
+    :return: target_frame <- source_frame
     :rtype: PoseStamped
     """
     p = PoseStamped()

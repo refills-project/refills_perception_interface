@@ -17,6 +17,9 @@ from iai_naive_kinematics_sim.srv import SetJointState, SetJointStateRequest
 from sensor_msgs.msg import JointState
 from std_srvs.srv import Trigger, TriggerRequest
 
+from refills_perception_interface.move_arm import MoveArm
+from refills_perception_interface.move_base import MoveBase
+
 NUM_SHELVES = 4
 NUM_LAYER = 4
 NUM_FACINGS = 4
@@ -38,7 +41,7 @@ def ros(request):
 
 @pytest.fixture(scope='module')
 def setup(request, ros):
-    i = Interface()
+    i = InterfaceWrapper()
 
     def reset_interface():
         i.reset()
@@ -49,11 +52,16 @@ def setup(request, ros):
 
 @pytest.fixture()
 def interface(setup):
+    """
+    :type setup: InterfaceWrapper
+    :return:
+    """
     setup.reset()
+    setup.giskard.drive_pose()
     return setup
 
 
-class Interface(object):
+class InterfaceWrapper(object):
     def __init__(self):
         rospy.init_node('tests')
         # rospy.set_param(DummyInterfaceNodeName + '/initial_beliefstate', 'package://refills_perception_interface/owl/muh.owl')
@@ -93,6 +101,8 @@ class Interface(object):
         self.simple_base_goal_pub = rospy.Publisher('move_base_simple/goal', PoseStamped)
         self.simple_joint_goal = rospy.ServiceProxy('refills_bot/set_joint_states', SetJointState)
         self.sim = True
+        self.giskard = MoveArm()
+        self.base = MoveBase()
         rospy.sleep(.5)
 
     def reset(self):
@@ -115,27 +125,27 @@ class Interface(object):
     def query_detect_shelf_layers_path(self, shelf_id, expected_error=QueryDetectShelfLayersPathResponse.SUCCESS):
         r = self.query_shelf_detection_path_srv.call(QueryDetectShelfLayersPathRequest(id=shelf_id))
         assert r.error == expected_error
-        if expected_error == QueryDetectShelfLayersPathResponse.SUCCESS:
-            assert len(r.path.postures) > 0
-            number_of_joints = -1
-            for posture in r.path.postures:
-                assert len(posture.joints) > 0
-                if number_of_joints == -1:  # all postures should have the same number of joints
-                    number_of_joints = len(posture.joints)
-                assert len(posture.joints) == number_of_joints
+        # if expected_error == QueryDetectShelfLayersPathResponse.SUCCESS:
+        #     assert len(r.path.postures) > 0
+        #     number_of_joints = -1
+        #     for posture in r.path.postures:
+        #         assert len(posture.joints) > 0
+        #         if number_of_joints == -1:  # all postures should have the same number of joints
+        #             number_of_joints = len(posture.joints)
+        #         assert len(posture.joints) == number_of_joints
         return r.path
 
     def query_detect_facings_path(self, layer_id, expected_error=QueryDetectFacingsPathResponse.SUCCESS):
         r = self.query_facing_detection_path_srv.call(QueryDetectFacingsPathRequest(id=layer_id))
         assert r.error == expected_error
-        if expected_error == QueryDetectFacingsPathResponse.SUCCESS:
-            assert len(r.path.postures) > 0
-            number_of_joints = -1
-            for posture in r.path.postures:
-                assert len(posture.joints) > 0
-                if number_of_joints == -1:  # all postures should have the same number of joints
-                    number_of_joints = len(posture.joints)
-                assert len(posture.joints) == number_of_joints
+        # if expected_error == QueryDetectFacingsPathResponse.SUCCESS:
+        #     assert len(r.path.postures) > 0
+        #     number_of_joints = -1
+        #     for posture in r.path.postures:
+        #         assert len(posture.joints) > 0
+        #         if number_of_joints == -1:  # all postures should have the same number of joints
+        #             number_of_joints = len(posture.joints)
+        #         assert len(posture.joints) == number_of_joints
         return r.path
 
     def query_count_products_posture(self, facing_id, expected_error=QueryCountProductsPostureResponse.SUCCESS):
@@ -146,8 +156,8 @@ class Interface(object):
         """
         r = self.query_product_counting_path_srv.call(QueryCountProductsPostureRequest(id=facing_id))
         assert r.error == expected_error
-        if expected_error == QueryCountProductsPostureResponse.SUCCESS:
-            assert len(r.posture.joints) > 0
+        # if expected_error == QueryCountProductsPostureResponse.SUCCESS:
+        #     assert len(r.posture.joints) > 0
         return r.posture
 
     def query_reset_belief_state(self):
@@ -258,26 +268,25 @@ class Interface(object):
         if self.sim:
             for posture in fbp.postures: # type: FullBodyPosture
                 self.execute_full_body_posture(posture)
+                rospy.sleep(0.5)
+
+    def move_base(self, goal_pose):
+        self.base.move_absolute(goal_pose, retry=False)
 
     def execute_full_body_posture(self, posture):
         """
         :type fbp: FullBodyPath
         """
-        # return
         if self.sim:
-            self.simple_base_goal_pub.publish(posture.base_pos)
-            js = JointState()
-            js.name = [self.to_real_joint_name(x.name) for x in posture.joints]
-            js.position = [x.position for x in posture.joints]
-            js.velocity = [0,0,0]
-            js.effort = [0,0,0]
-            goal = SetJointStateRequest()
-            goal.state = js
-            self.simple_joint_goal.call(goal)
-            rospy.sleep(0.5)
+            if posture.type == posture.NO_TYPE:
+                assert False, '{} has no type'.format(posture)
+            if posture.type == posture.BASE or posture.type == posture.BOTH:
+                self.move_base(posture.base_pos)
+            if posture.type == posture.CAMERA or posture.type == posture.BOTH:
+                self.giskard.set_and_send_cartesian_goal(posture.camera_pos)
 
 
-class TestDummyInterface(object):
+class TestPerceptionInterface(object):
 
     # -------------------------------------------------------other------------------------------------------------------
     def test_query_shelf_systems(self, interface):
@@ -447,9 +456,18 @@ class TestDummyInterface(object):
                     assert len(pose.joints) == 3
 
     def test_shop_scan(self, interface):
+        """
+        :type interface: InterfaceWrapper
+        :return:
+        """
         shelf_ids = interface.query_shelf_systems()
         for shelf_id in shelf_ids:
             path = interface.query_detect_shelf_layers_path(shelf_id)
+            p1 = FullBodyPath()
+            p1.postures.append(path.postures[0])
+            interface.execute_full_body_path(p1)
+            interface.giskard.floor_detection_pose()
+            path.postures.pop(0)
             interface.execute_full_body_path(path)
             interface.detect_shelf_layers(shelf_id)
             layers = interface.query_shelf_layers(shelf_id)
@@ -464,10 +482,13 @@ class TestDummyInterface(object):
                     count = interface.count_products(facing_id)
 
     def test_shop_scan_without_path(self, interface):
+        """
+        :type interface: InterfaceWrapper
+        """
         shelf_ids = interface.query_shelf_systems()
         for shelf_id in shelf_ids:
             # path = interface.query_detect_shelf_layers_path(shelf_id)
-              # interface.execute_full_body_path(path)
+            # interface.execute_full_body_path(path)
             interface.detect_shelf_layers(shelf_id)
             layers = interface.query_shelf_layers(shelf_id)
             for layer_id in layers:

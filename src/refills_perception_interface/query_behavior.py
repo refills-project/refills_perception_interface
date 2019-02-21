@@ -140,10 +140,10 @@ class QueryBehavior(MyBahaviour):
         r = QueryDetectShelfLayersPathResponse()
         if self.get_knowrob().shelf_system_exists(data.id):
             r.error = QueryDetectShelfLayersPathResponse.SUCCESS
-            try:
-                r.path = self.paths.get_detect_shelf_layers_path(data.id)
-            except:
-                rospy.logerr('path error')
+            # try:
+            r.path = self.paths.get_detect_shelf_layers_path(data.id)
+            # except:
+            #     rospy.logerr('path error')
         else:
             r.error = QueryDetectShelfLayersPathResponse.INVALID_ID
         self.wait_for_update()
@@ -176,10 +176,10 @@ class QueryBehavior(MyBahaviour):
         r = QueryCountProductsPostureResponse()
         if self.get_knowrob().facing_exists(data.id):
             r.error = QueryCountProductsPostureResponse.SUCCESS
-            try:
-                r.posture = self.paths.get_count_product_posture(data.id)
-            except:
-                rospy.logerr('path error')
+            # try:
+            r.posture = self.paths.get_count_product_posture(data.id)
+            # except:
+            #     rospy.logerr('path error')
 
         else:
             r.error = QueryCountProductsPostureResponse.INVALID_ID

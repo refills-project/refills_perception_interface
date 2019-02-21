@@ -55,7 +55,7 @@ class FakeRoboSherlock(object):
             separator = PoseStamped()
             separator.header.frame_id = self.knowrob.get_perceived_frame_id(self.current_shelf_layer_id)
             x = (i / (self.number_of_facings)) * width
-            separator.pose.position = Point(x, 0.1*i, 0.01)
+            separator.pose.position = Point(x, 0.01*i, 0.01)
             separator.pose.orientation.w = 1
             separators.append(separator)
         return separators
@@ -116,8 +116,9 @@ class FakeRoboSherlock(object):
         :return: list of shelf layer heights
         :rtype: list
         """
-        shelf_system_height = self.knowrob.get_shelf_system_height(shelf_system_id)
-        detected_shelf_layers = (np.random.rand(4)*(shelf_system_height-0.4)+0.2).tolist()
+        # shelf_system_height = self.knowrob.get_shelf_system_height(shelf_system_id)
+        shelf_system_height = 1
+        detected_shelf_layers = (np.random.rand(3)*(shelf_system_height-0.2)+0.2).tolist()
         return add_bottom_layer_if_not_present(detected_shelf_layers, shelf_system_id, self.knowrob)
 
 

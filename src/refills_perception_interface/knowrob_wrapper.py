@@ -23,6 +23,7 @@ MAP = 'map'
 SHOP = 'shop'
 SHELF_FLOOR = '{}:\'ShelfLayer\''.format(SHOP)
 DM_MARKET = 'dmshop'
+SHELF_BOTTOM_LAYER = '{}:\'DMShelfBFloor\''.format(DM_MARKET)
 SHELF_SYSTEM = '{}:\'DMShelfFrame\''.format(DM_MARKET)
 SHELFH200 = '{}:\'DMShelfH200\''.format(DM_MARKET)
 SHELF_T5 = '{}:\'DMShelfT5\''.format(DM_MARKET)
@@ -184,7 +185,8 @@ class KnowRob(object):
             floor_id = solution['Floor'].replace('\'', '')
             floor_pose = lookup_pose(shelf_frame_id, solution['Frame'].replace('\'', ''))
             floors.append((floor_id, floor_pose))
-        floors = list(sorted(floors, key=lambda x: -x[1].pose.position.z))
+        floors = list(sorted(floors, key=lambda x: x[1].pose.position.z))
+        floors = [x for x in floors if x[1].pose.position.z < 1.5]
         self.floors = OrderedDict(floors)
         return self.floors
 
@@ -486,6 +488,15 @@ class KnowRob(object):
         :rtype: str
         """
         return self.get_shelf_layer_above(shelf_layer_id) is None
+
+    def is_bottom_layer(self, shelf_layer_id):
+        """
+        :type shelf_layer_id: str
+        :return: shelf layer above or None if it does not exist.
+        :rtype: str
+        """
+        q = 'rdfs_individual_of(\'{}\', {})'.format(shelf_layer_id, SHELF_BOTTOM_LAYER)
+        return self.once(q) != []
 
     def clear_beliefstate(self, initial_beliefstate=None):
         """

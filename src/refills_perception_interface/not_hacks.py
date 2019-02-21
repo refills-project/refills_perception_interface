@@ -100,7 +100,7 @@ def update_shelf_system_pose(knowrob, top_layer_id, separators):
     :type separators: list
     :return:
     """
-    if not knowrob.is_top_layer(top_layer_id):
+    if not knowrob.is_bottom_layer(top_layer_id):
         return
     shelf_system_id = knowrob.get_shelf_system_from_layer(top_layer_id)
     shelf_system_frame_id = knowrob.get_object_frame_id(shelf_system_id)
