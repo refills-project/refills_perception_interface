@@ -1,5 +1,6 @@
 from multiprocessing import TimeoutError
 
+import PyKDL
 import actionlib
 import rospy
 from actionlib_msgs.msg import GoalStatus
@@ -8,6 +9,8 @@ from move_base_msgs.msg import MoveBaseAction, MoveBaseGoal
 from sensor_msgs.msg import LaserScan
 from std_msgs.msg import Header
 from tf.transformations import quaternion_about_axis
+
+from refills_perception_interface.tfwrapper import msg_to_kdl, kdl_to_posestamped, lookup_transform
 
 
 class MoveBase(object):
@@ -56,6 +59,40 @@ class MoveBase(object):
             if self.knowrob is not None:
                 self.knowrob.finish_action()
             return result
+
+    def move_camera(self, target_pose):
+        target_pose = self.cam_pose_to_base_pose(target_pose)
+        self.goal_pub.publish(target_pose)
+        goal = MoveBaseGoal()
+        goal.target_pose = target_pose
+        self.client.send_goal(goal)
+        wait_result = self.client.wait_for_result(rospy.Duration(self.timeout))
+        result = self.client.get_result()
+        state = self.client.get_state()
+        if not (wait_result and state == GoalStatus.SUCCEEDED):
+            print('movement did not finish in time')
+            raise TimeoutError()
+        return result
+
+    def cam_pose_to_base_pose(self, cam_pose):
+        """
+        :type cam_pose: PoseStamped
+        :rtype: PoseStamped
+        """
+        T_shelf___cam_joint_g = msg_to_kdl(cam_pose)
+        T_map___bfg = T_shelf___cam_joint_g * self.get_cam_in_base_footprint_kdl().Inverse()
+        base_pose = kdl_to_posestamped(T_map___bfg, cam_pose.header.frame_id)
+        return base_pose
+
+    def get_cam_in_base_footprint_kdl(self):
+        """
+        :rtype: PyKDL.Frame
+        """
+        # if self.T_bf___cam_joint is None:
+        T_bf___cam_joint = msg_to_kdl(lookup_transform('base_footprint', 'camera_link'))
+        T_bf___cam_joint.p[2] = 0
+        T_bf___cam_joint.M = PyKDL.Rotation()
+        return T_bf___cam_joint
 
     def move_absolute_xyz(self, frame_id, x, y, z, retry=True):
         target_pose = PoseStamped()

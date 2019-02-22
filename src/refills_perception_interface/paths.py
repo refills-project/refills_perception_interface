@@ -1,6 +1,7 @@
 from __future__ import division
 
 import rospkg
+from copy import deepcopy
 from math import radians
 import numpy as np
 
@@ -10,6 +11,7 @@ from control_msgs.msg import FollowJointTrajectoryActionGoal
 from refills_msgs.msg import FullBodyPosture, JointPosition, FullBodyPath
 from geometry_msgs.msg import PoseStamped, Quaternion, Point, QuaternionStamped
 from rospy_message_converter.message_converter import convert_dictionary_to_ros_message
+from sensor_msgs.msg import JointState
 from tf.transformations import quaternion_about_axis
 from trajectory_msgs.msg import JointTrajectory
 
@@ -41,6 +43,12 @@ class Paths(object):
         """
         self.knowrob = knowrob
         self.ceiling_height = rospy.get_param('~ceiling_height')
+        self.joint_names = ['ur5_shoulder_pan_joint',
+                            'ur5_shoulder_lift_joint',
+                            'ur5_elbow_joint',
+                            'ur5_wrist_1_joint',
+                            'ur5_wrist_2_joint',
+                            'ur5_wrist_3_joint', ]
 
     def load_traj(self, name):
         rospack = rospkg.RosPack()
@@ -71,14 +79,18 @@ class Paths(object):
         cam_pose.pose.position.z = max(MIN_CAM_HEIGHT, min(desired_height, MAX_CAM_HEIGHT))
         return cam_pose
 
-    def get_cam_pose(self, height, rotation):
+    def get_cam_pose(self, height, rotation, left=True):
         fbp = FullBodyPosture()
         fbp.type = fbp.CAMERA
         fbp.camera_pos = self.height_to_cam_pose(height)
-
-        t_base_footprint___camera = PyKDL.Frame(PyKDL.Rotation(1, 0, 0,
-                                                               0, 0, 1,
-                                                               0, -1, 0))
+        if left:
+            t_base_footprint___camera = PyKDL.Frame(PyKDL.Rotation(1, 0, 0,
+                                                                   0, 0, 1,
+                                                                   0, -1, 0))
+        else:
+            t_base_footprint___camera = PyKDL.Frame(PyKDL.Rotation(-1, 0, 0,
+                                                                   0, 0, -1,
+                                                                   0, -1, 0))
         t_camera___camera_goal = PyKDL.Frame(PyKDL.Rotation.RotX(rotation))
         t_base_footprint___camera_goal = t_base_footprint___camera * t_camera___camera_goal
         fbp.camera_pos.pose.orientation = kdl_to_pose(t_base_footprint___camera_goal).orientation
@@ -113,8 +125,9 @@ class Paths(object):
         else:
             cam_pose.pose.orientation = Quaternion(*quaternion_about_axis(np.pi, [0, 0, 1]))
 
-        base_pose = self.cam_pose_to_base_pose(cam_pose)
-        return base_pose
+        # base_pose = self.cam_pose_to_base_pose(cam_pose)
+        # return base_pose
+        return cam_pose
 
     def cam_pose_to_base_pose(self, cam_pose):
         """
@@ -130,11 +143,37 @@ class Paths(object):
         """
         :rtype: PyKDL.Frame
         """
-        if self.T_bf___cam_joint is None:
-            self.T_bf___cam_joint = msg_to_kdl(lookup_transform('base_footprint', 'camera_link'))
-            self.T_bf___cam_joint.p[2] = 0
-            self.T_bf___cam_joint.M = PyKDL.Rotation()
-        return self.T_bf___cam_joint
+        # if self.T_bf___cam_joint is None:
+        T_bf___cam_joint = msg_to_kdl(lookup_transform('base_footprint', 'camera_link'))
+        T_bf___cam_joint.p[2] = 0
+        T_bf___cam_joint.M = PyKDL.Rotation()
+        return T_bf___cam_joint
+
+    def get_floor_detection_pose_left(self):
+        joint_state = JointState()
+        joint_state.name = self.joint_names
+        joint_state.position = [
+            0.0,
+            -1.768,
+            -0.51,
+            -2.396,
+            0.243438,
+            -np.pi,
+        ]
+        return joint_state
+
+    def get_floor_detection_pose_right(self):
+        joint_state = JointState()
+        joint_state.name = self.joint_names
+        joint_state.position = [
+            -np.pi,
+            -1.37,
+            0.51,
+            -0.72,
+            -0.22,
+            0,
+        ]
+        return joint_state
 
     def get_detect_shelf_layers_path(self, shelf_system_id):
         """
@@ -149,19 +188,30 @@ class Paths(object):
 
         if self.is_left(shelf_system_id):
             base_pose = self.cam_pose_in_front_of_shelf(shelf_system_id, shelf_system_width / 2)
-            base_pose = transform_pose('map', base_pose)
+            # base_pose = transform_pose('map', base_pose)
+
+            full_body_pose = FullBodyPosture()
+            full_body_pose.base_pos = deepcopy(base_pose)
+            full_body_pose.base_pos.pose.position.y -= 0.2
+            full_body_pose.type = FullBodyPosture.BASE
+            full_body_path.postures.append(full_body_pose)
+
+            full_body_pose = FullBodyPosture()
+            full_body_pose.goal_joint_state = self.get_floor_detection_pose_left()
+            full_body_pose.type = FullBodyPosture.JOINT
+            full_body_path.postures.append(full_body_pose)
 
             full_body_pose = FullBodyPosture()
             full_body_pose.base_pos = base_pose
             full_body_pose.type = FullBodyPosture.BASE
             full_body_path.postures.append(full_body_pose)
 
-            full_body_pose = FullBodyPosture()
-            full_body_pose.type = FullBodyPosture.CAMERA
-            full_body_pose.camera_pos.header.frame_id = 'camera_link'
-            full_body_pose.camera_pos.pose.position = Point(0, 0, 0)
-            full_body_pose.camera_pos.pose.orientation = Quaternion(0, 0, 0, 1)
-            full_body_path.postures.append(full_body_pose)
+            # full_body_pose = FullBodyPosture()
+            # full_body_pose.type = FullBodyPosture.CAMERA
+            # full_body_pose.camera_pos.header.frame_id = 'camera_link'
+            # full_body_pose.camera_pos.pose.position = Point(0, 0, 0)
+            # full_body_pose.camera_pos.pose.orientation = Quaternion(0, 0, 0, 1)
+            # full_body_path.postures.append(full_body_pose)
 
             full_body_pose = FullBodyPosture()
             full_body_pose.type = FullBodyPosture.CAMERA
@@ -172,7 +222,39 @@ class Paths(object):
 
             return full_body_path
         else:
-            raise Exception('is left not implemented')
+            base_pose = self.cam_pose_in_front_of_shelf(shelf_system_id, shelf_system_width / 2)
+            base_pose = transform_pose('map', base_pose)
+
+            full_body_pose = FullBodyPosture()
+            full_body_pose.base_pos = base_pose
+            full_body_pose.type = FullBodyPosture.BASE
+            full_body_path.postures.append(full_body_pose)
+
+            full_body_pose = FullBodyPosture()
+            full_body_pose.goal_joint_state = self.get_floor_detection_pose_right()
+            full_body_pose.type = FullBodyPosture.JOINT
+            full_body_path.postures.append(full_body_pose)
+
+            full_body_pose = FullBodyPosture()
+            full_body_pose.base_pos = base_pose
+            full_body_pose.type = FullBodyPosture.BASE
+            full_body_path.postures.append(full_body_pose)
+
+            # full_body_pose = FullBodyPosture()
+            # full_body_pose.type = FullBodyPosture.CAMERA
+            # full_body_pose.camera_pos.header.frame_id = 'camera_link'
+            # full_body_pose.camera_pos.pose.position = Point(0, 0, 0)
+            # full_body_pose.camera_pos.pose.orientation = Quaternion(0, 0, 0, 1)
+            # full_body_path.postures.append(full_body_pose)
+
+            full_body_pose = FullBodyPosture()
+            full_body_pose.type = FullBodyPosture.CAMERA
+            full_body_pose.camera_pos.header.frame_id = 'camera_link'
+            full_body_pose.camera_pos.pose.position = Point(0, 1, 0)
+            full_body_pose.camera_pos.pose.orientation = Quaternion(0, 0, 0, 1)
+            full_body_path.postures.append(full_body_pose)
+
+            return full_body_path
 
     def layer_too_low(self, shelf_layer_height):
         return shelf_layer_height < MIN_CAM_HEIGHT
@@ -201,16 +283,10 @@ class Paths(object):
         full_body_pose = FullBodyPosture()
         full_body_pose.type = FullBodyPosture.CAMERA
 
-        if self.is_left(shelf_system_id):
-            if self.layer_too_low(shelf_layer_height):
-                full_body_pose = self.get_cam_pose(shelf_layer_height + to_low_offset, radians(-25))
-            else:
-                full_body_pose = self.get_cam_pose(shelf_layer_height + other_offset, radians(0))
+        if self.layer_too_low(shelf_layer_height):
+            full_body_pose = self.get_cam_pose(shelf_layer_height + to_low_offset, radians(-25), self.is_left(shelf_system_id))
         else:
-            if self.layer_too_low(shelf_layer_height):
-                full_body_pose = self.get_cam_pose(shelf_layer_height + to_low_offset, radians(25))
-            else:
-                full_body_pose = self.get_cam_pose(shelf_layer_height + other_offset, radians(180))
+            full_body_pose = self.get_cam_pose(shelf_layer_height + other_offset, radians(0), self.is_left(shelf_system_id))
 
         full_body_path.postures.append(full_body_pose)
 
@@ -259,15 +335,12 @@ class Paths(object):
 
         # joints
         shelf_layer_height = lookup_pose('map', shelf_layer_frame_id).pose.position.z
-        counting_offset = 0.45
+        counting_offset = 0.35
         # TODO tune this number
         torso_rot_1_height = shelf_layer_height + counting_offset
         torso_rot_1_height = max(MIN_CAM_HEIGHT, torso_rot_1_height)
 
-        if self.is_left(shelf_system_id):
-            full_body_pose = self.get_cam_pose(torso_rot_1_height, radians(-25))
-        else:
-            full_body_pose = self.get_cam_pose(torso_rot_1_height, radians(25))
+        full_body_pose = self.get_cam_pose(torso_rot_1_height, radians(-25), self.is_left(shelf_system_id))
 
         facing_pose_on_layer = lookup_pose(shelf_layer_frame_id, facing_frame_id)
 

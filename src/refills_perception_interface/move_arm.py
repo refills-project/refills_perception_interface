@@ -2,7 +2,7 @@ import rospy
 from geometry_msgs.msg import Quaternion, Point, PoseStamped, QuaternionStamped, PointStamped
 from giskard_msgs.msg import Controller, ControllerListGoal, ControllerListAction, MoveResult
 from sensor_msgs.msg import JointState
-
+import numpy as np
 from giskardpy.python_interface import GiskardWrapper
 
 
@@ -62,7 +62,7 @@ class MoveArm(object):
             self.giskard.disable_self_collision()
             return self.giskard.plan_and_execute().error_code == MoveResult.SUCCESS
 
-    def floor_detection_pose(self):
+    def floor_detection_pose_right(self):
         joint_state = JointState()
         joint_state.name = self.joint_names
         joint_state.position = [
@@ -70,8 +70,21 @@ class MoveArm(object):
             -1.768,
             -0.51,
             -2.396,
-            0.2181,
-            -3.191,
+            0.243438,
+            -np.pi,
+        ]
+        return self.set_and_send_joint_goal(joint_state)
+
+    def floor_detection_pose_left(self):
+        joint_state = JointState()
+        joint_state.name = self.joint_names
+        joint_state.position = [
+            -np.pi,
+            -1.37,
+            0.51,
+            -0.72,
+            -0.22,
+            0,
         ]
         return self.set_and_send_joint_goal(joint_state)
 
@@ -79,12 +92,12 @@ class MoveArm(object):
         joint_state = JointState()
         joint_state.name = self.joint_names
         joint_state.position = [
+            -np.pi/2,
+            -np.pi/2,
             0,
-            -0.88,
-            -1.351,
-            -2.4346,
-            0.21823,
-            -3.199,
+            -np.pi/2,
+            0,
+            -np.pi/2,
         ]
         return self.set_and_send_joint_goal(joint_state)
 

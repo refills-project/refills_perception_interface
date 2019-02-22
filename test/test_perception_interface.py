@@ -46,7 +46,7 @@ def setup(request, ros):
     def reset_interface():
         i.reset()
 
-    request.addfinalizer(reset_interface)
+    # request.addfinalizer(reset_interface)
     return i
 
 
@@ -271,7 +271,7 @@ class InterfaceWrapper(object):
                 rospy.sleep(0.5)
 
     def move_base(self, goal_pose):
-        self.base.move_absolute(goal_pose, retry=False)
+        self.base.move_camera(goal_pose)
 
     def execute_full_body_posture(self, posture):
         """
@@ -284,6 +284,8 @@ class InterfaceWrapper(object):
                 self.move_base(posture.base_pos)
             if posture.type == posture.CAMERA or posture.type == posture.BOTH:
                 self.giskard.set_and_send_cartesian_goal(posture.camera_pos)
+            if posture.type == posture.JOINT:
+                self.giskard.set_and_send_joint_goal(posture.goal_joint_state)
 
 
 class TestPerceptionInterface(object):
@@ -462,12 +464,14 @@ class TestPerceptionInterface(object):
         """
         shelf_ids = interface.query_shelf_systems()
         for shelf_id in shelf_ids:
+            interface.giskard.drive_pose()
             path = interface.query_detect_shelf_layers_path(shelf_id)
-            p1 = FullBodyPath()
-            p1.postures.append(path.postures[0])
-            interface.execute_full_body_path(p1)
-            interface.giskard.floor_detection_pose()
-            path.postures.pop(0)
+            # p1 = FullBodyPath()
+            # p1.postures.append(path.postures[0])
+            # path.postures.pop(0)
+            # interface.execute_full_body_path(p1)
+            # interface.giskard.floor_detection_pose()
+            # interface.execute_full_body_path(p1)
             interface.execute_full_body_path(path)
             interface.detect_shelf_layers(shelf_id)
             layers = interface.query_shelf_layers(shelf_id)
