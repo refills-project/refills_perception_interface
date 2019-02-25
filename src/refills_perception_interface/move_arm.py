@@ -7,7 +7,7 @@ from giskardpy.python_interface import GiskardWrapper
 
 
 class MoveArm(object):
-    def __init__(self, enabled=True, knowrob=None):
+    def __init__(self, enabled=True, knowrob=None, avoid_self_collisinon=True):
         self.move_time_limit = 25
         self.enabled = enabled
         self.knowrob = knowrob
@@ -18,6 +18,7 @@ class MoveArm(object):
         self.rot_p_gain = 0.5
         self.trans_max_speed = 0.1
         self.rot_max_speed = 0.3
+        self.avoid_self_collision = avoid_self_collisinon
 
         # TODO get this from param server of topic
         self.joint_names = ['ur5_shoulder_pan_joint',
@@ -48,18 +49,21 @@ class MoveArm(object):
     def set_and_send_cartesian_goal(self, goal_pose):
         self.set_translation_goal(goal_pose)
         self.set_orientation_goal(goal_pose)
-        self.giskard.disable_self_collision()
+        if not self.avoid_self_collision:
+            self.giskard.disable_self_collision()
         return self.giskard.plan_and_execute().error_code == MoveResult.SUCCESS
 
     def send_cartesian_goal(self):
         if self.enabled:
-            self.giskard.disable_self_collision()
+            if not self.avoid_self_collision:
+                self.giskard.disable_self_collision()
             return self.giskard.plan_and_execute().error_code == MoveResult.SUCCESS
 
     def set_and_send_joint_goal(self, joint_state):
         if self.enabled:
             self.giskard.set_joint_goal(joint_state)
-            self.giskard.disable_self_collision()
+            if not self.avoid_self_collision:
+                self.giskard.disable_self_collision()
             return self.giskard.plan_and_execute().error_code == MoveResult.SUCCESS
 
     def floor_detection_pose_right(self):
@@ -94,7 +98,7 @@ class MoveArm(object):
         joint_state.position = [
             -np.pi/2,
             -np.pi/2,
-            0,
+            -2.3,
             -np.pi/2,
             0,
             -np.pi/2,

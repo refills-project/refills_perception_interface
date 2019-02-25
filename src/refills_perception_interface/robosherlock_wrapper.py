@@ -118,7 +118,7 @@ class FakeRoboSherlock(object):
         """
         # shelf_system_height = self.knowrob.get_shelf_system_height(shelf_system_id)
         shelf_system_height = 1
-        detected_shelf_layers = (np.random.rand(3)*(shelf_system_height-0.2)+0.2).tolist()
+        detected_shelf_layers = (np.random.rand(2)*(shelf_system_height-0.2)+0.2).tolist()
         return add_bottom_layer_if_not_present(detected_shelf_layers, shelf_system_id, self.knowrob)
 
 

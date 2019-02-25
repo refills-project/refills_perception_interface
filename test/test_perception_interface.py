@@ -101,7 +101,7 @@ class InterfaceWrapper(object):
         self.simple_base_goal_pub = rospy.Publisher('move_base_simple/goal', PoseStamped)
         self.simple_joint_goal = rospy.ServiceProxy('refills_bot/set_joint_states', SetJointState)
         self.sim = True
-        self.giskard = MoveArm()
+        self.giskard = MoveArm(avoid_self_collisinon=True)
         self.base = MoveBase()
         rospy.sleep(.5)
 
@@ -270,8 +270,11 @@ class InterfaceWrapper(object):
                 self.execute_full_body_posture(posture)
                 rospy.sleep(0.5)
 
-    def move_base(self, goal_pose):
+    def move_camera_footprint(self, goal_pose):
         self.base.move_camera(goal_pose)
+
+    def move_base(self, goal_pose):
+        self.base.move_absolute(goal_pose)
 
     def execute_full_body_posture(self, posture):
         """
@@ -280,12 +283,14 @@ class InterfaceWrapper(object):
         if self.sim:
             if posture.type == posture.NO_TYPE:
                 assert False, '{} has no type'.format(posture)
-            if posture.type == posture.BASE or posture.type == posture.BOTH:
+            if posture.type == posture.BASE:
                 self.move_base(posture.base_pos)
             if posture.type == posture.CAMERA or posture.type == posture.BOTH:
                 self.giskard.set_and_send_cartesian_goal(posture.camera_pos)
             if posture.type == posture.JOINT:
                 self.giskard.set_and_send_joint_goal(posture.goal_joint_state)
+            if posture.type == posture.CAM_FOOTPRINT or posture.type == posture.BOTH:
+                self.move_camera_footprint(posture.base_pos)
 
 
 class TestPerceptionInterface(object):

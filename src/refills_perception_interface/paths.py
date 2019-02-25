@@ -25,7 +25,7 @@ from refills_perception_interface.utils import kdl_to_pose
 
 # TORSO_LIN1_UPPER_LIMIT = 0.6
 # TORSO_LIN2_UPPER_LIMIT = 1.295
-MIN_CAM_HEIGHT = 0.404
+MIN_CAM_HEIGHT = 0.35
 MAX_CAM_HEIGHT = 1.2
 
 # CAM_IN_BASE_LINK = 0.862
@@ -104,7 +104,7 @@ class Paths(object):
     def is_right(self, shelf_system_id):
         return self.knowrob.is_right(shelf_system_id)
 
-    def cam_pose_in_front_of_shelf(self, shelf_system_id, x=0., y=-0.68, x_limit=0.1):
+    def cam_pose_in_front_of_shelf(self, shelf_system_id, x=0., y=-0.5, x_limit=0.1):
         """
         computes a goal for base_link such that torso_Schwenker_Cams is at x/y in front of shelf_system_id
         :type shelf_system_id: str
@@ -186,75 +186,35 @@ class Paths(object):
 
         # calculate base pose
 
+        base_pose = self.cam_pose_in_front_of_shelf(shelf_system_id, shelf_system_width / 2)
+
+        full_body_pose = FullBodyPosture()
+        full_body_pose.base_pos = deepcopy(base_pose)
+        full_body_pose.base_pos.pose.position.y -= 0.25
+        full_body_pose.type = FullBodyPosture.BASE
+        full_body_path.postures.append(full_body_pose)
+
+        full_body_pose = FullBodyPosture()
         if self.is_left(shelf_system_id):
-            base_pose = self.cam_pose_in_front_of_shelf(shelf_system_id, shelf_system_width / 2)
-            # base_pose = transform_pose('map', base_pose)
-
-            full_body_pose = FullBodyPosture()
-            full_body_pose.base_pos = deepcopy(base_pose)
-            full_body_pose.base_pos.pose.position.y -= 0.2
-            full_body_pose.type = FullBodyPosture.BASE
-            full_body_path.postures.append(full_body_pose)
-
-            full_body_pose = FullBodyPosture()
             full_body_pose.goal_joint_state = self.get_floor_detection_pose_left()
-            full_body_pose.type = FullBodyPosture.JOINT
-            full_body_path.postures.append(full_body_pose)
-
-            full_body_pose = FullBodyPosture()
-            full_body_pose.base_pos = base_pose
-            full_body_pose.type = FullBodyPosture.BASE
-            full_body_path.postures.append(full_body_pose)
-
-            # full_body_pose = FullBodyPosture()
-            # full_body_pose.type = FullBodyPosture.CAMERA
-            # full_body_pose.camera_pos.header.frame_id = 'camera_link'
-            # full_body_pose.camera_pos.pose.position = Point(0, 0, 0)
-            # full_body_pose.camera_pos.pose.orientation = Quaternion(0, 0, 0, 1)
-            # full_body_path.postures.append(full_body_pose)
-
-            full_body_pose = FullBodyPosture()
-            full_body_pose.type = FullBodyPosture.CAMERA
-            full_body_pose.camera_pos.header.frame_id = 'camera_link'
-            full_body_pose.camera_pos.pose.position = Point(0, 1, 0)
-            full_body_pose.camera_pos.pose.orientation = Quaternion(0, 0, 0, 1)
-            full_body_path.postures.append(full_body_pose)
-
-            return full_body_path
         else:
-            base_pose = self.cam_pose_in_front_of_shelf(shelf_system_id, shelf_system_width / 2)
-            base_pose = transform_pose('map', base_pose)
-
-            full_body_pose = FullBodyPosture()
-            full_body_pose.base_pos = base_pose
-            full_body_pose.type = FullBodyPosture.BASE
-            full_body_path.postures.append(full_body_pose)
-
-            full_body_pose = FullBodyPosture()
             full_body_pose.goal_joint_state = self.get_floor_detection_pose_right()
-            full_body_pose.type = FullBodyPosture.JOINT
-            full_body_path.postures.append(full_body_pose)
+        full_body_pose.type = FullBodyPosture.JOINT
+        full_body_path.postures.append(full_body_pose)
 
-            full_body_pose = FullBodyPosture()
-            full_body_pose.base_pos = base_pose
-            full_body_pose.type = FullBodyPosture.BASE
-            full_body_path.postures.append(full_body_pose)
+        full_body_pose = FullBodyPosture()
+        full_body_pose.base_pos = base_pose
+        full_body_pose.type = FullBodyPosture.CAM_FOOTPRINT
+        full_body_path.postures.append(full_body_pose)
 
-            # full_body_pose = FullBodyPosture()
-            # full_body_pose.type = FullBodyPosture.CAMERA
-            # full_body_pose.camera_pos.header.frame_id = 'camera_link'
-            # full_body_pose.camera_pos.pose.position = Point(0, 0, 0)
-            # full_body_pose.camera_pos.pose.orientation = Quaternion(0, 0, 0, 1)
-            # full_body_path.postures.append(full_body_pose)
+        full_body_pose = FullBodyPosture()
+        full_body_pose.type = FullBodyPosture.CAMERA
+        full_body_pose.camera_pos.header.frame_id = 'camera_link'
+        full_body_pose.camera_pos.pose.position = Point(0, 1, 0)
+        full_body_pose.camera_pos.pose.orientation = Quaternion(0, 0, 0, 1)
+        full_body_path.postures.append(full_body_pose)
 
-            full_body_pose = FullBodyPosture()
-            full_body_pose.type = FullBodyPosture.CAMERA
-            full_body_pose.camera_pos.header.frame_id = 'camera_link'
-            full_body_pose.camera_pos.pose.position = Point(0, 1, 0)
-            full_body_pose.camera_pos.pose.orientation = Quaternion(0, 0, 0, 1)
-            full_body_path.postures.append(full_body_pose)
-
-            return full_body_path
+        return full_body_path
 
     def layer_too_low(self, shelf_layer_height):
         return shelf_layer_height < MIN_CAM_HEIGHT
@@ -295,13 +255,13 @@ class Paths(object):
         start_base_pose = self.cam_pose_in_front_of_shelf(shelf_system_id)
         start_base_pose = transform_pose('map', start_base_pose)
         start_full_body_pose = FullBodyPosture()
-        start_full_body_pose.type = FullBodyPosture.BASE
+        start_full_body_pose.type = FullBodyPosture.CAM_FOOTPRINT
         start_full_body_pose.base_pos = start_base_pose
 
         end_base_pose = self.cam_pose_in_front_of_shelf(shelf_system_id, x=shelf_system_width)
         end_base_pose = transform_pose('map', end_base_pose)
         end_full_body_pose = FullBodyPosture()
-        end_full_body_pose.type = FullBodyPosture.BASE
+        end_full_body_pose.type = FullBodyPosture.CAM_FOOTPRINT
         end_full_body_pose.base_pos = end_base_pose
 
         if self.is_left(shelf_system_id):
