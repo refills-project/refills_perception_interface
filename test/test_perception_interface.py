@@ -49,6 +49,17 @@ def setup(request, ros):
     # request.addfinalizer(reset_interface)
     return i
 
+@pytest.fixture()
+def interface_no_move(setup):
+    """
+    :type setup: InterfaceWrapper
+    :return:
+    """
+    setup.sleep = True
+    setup.move = False
+    setup.reset()
+    return setup
+
 
 @pytest.fixture()
 def interface(setup):
@@ -62,7 +73,7 @@ def interface(setup):
 
 
 class InterfaceWrapper(object):
-    def __init__(self):
+    def __init__(self, sim=False, move=True):
         rospy.init_node('tests')
         # rospy.set_param(DummyInterfaceNodeName + '/initial_beliefstate', 'package://refills_perception_interface/owl/muh.owl')
         # rospy.set_param(DummyInterfaceNodeName + '/initial_beliefstate',
@@ -98,9 +109,11 @@ class InterfaceWrapper(object):
         self.detect_facings_ac = SimpleActionClient(DummyInterfaceNodeName + '/detect_facings', DetectFacingsAction)
         self.count_products_ac = SimpleActionClient(DummyInterfaceNodeName + '/count_products', CountProductsAction)
 
-        self.simple_base_goal_pub = rospy.Publisher('move_base_simple/goal', PoseStamped)
+        # self.simple_base_goal_pub = rospy.Publisher('move_base_simple/goal', PoseStamped)
         self.simple_joint_goal = rospy.ServiceProxy('refills_bot/set_joint_states', SetJointState)
-        self.sim = True
+        self.sleep = sim
+        self.sleep_amount = 10
+        self.move = move
         self.giskard = MoveArm(avoid_self_collisinon=True)
         self.base = MoveBase()
         rospy.sleep(.5)
@@ -187,10 +200,13 @@ class InterfaceWrapper(object):
         assert r.error == expected_error
         return r
 
-    def detect_shelf_layers(self, shelf_system_id):
+    def detect_shelf_layers(self, shelf_system_id, path):
         self.start_detect_shelf_layers(shelf_system_id)
-        if not self.sim:
-            rospy.sleep(5)
+        if self.sleep:
+            rospy.sleep(self.sleep_amount)
+        else:
+            if path is not None:
+                self.execute_full_body_path(path)
         self.finish_perception()
         r = self.get_detect_shelf_layers_result()
         assert len(r.ids) > 0
@@ -203,6 +219,7 @@ class InterfaceWrapper(object):
     def start_detect_facings(self, layer_id):
         goal = DetectFacingsGoal()
         goal.id = layer_id
+        rospy.sleep(.5)
         self.detect_facings_ac.send_goal(goal)
         rospy.sleep(.5)
 
@@ -219,10 +236,12 @@ class InterfaceWrapper(object):
         assert r.error == expected_error
         return r.ids
 
-    def detect_facings(self, layer_id):
+    def detect_facings(self, layer_id, path):
         self.start_detect_facings(layer_id)
-        if not self.sim:
-            rospy.sleep(5)
+        if self.sleep:
+            rospy.sleep(self.sleep_amount)
+        else:
+            self.execute_full_body_path(path)
         self.finish_perception()
         r = self.get_detect_facings_result()
         assert len(r.ids) > 0
@@ -247,6 +266,8 @@ class InterfaceWrapper(object):
         return r
 
     def count_products(self, facing_id):
+        if self.move:
+            rospy.sleep(.5)
         self.start_count_products(facing_id)
         # self.finish_perception()
         r = self.get_count_products_result()
@@ -265,22 +286,24 @@ class InterfaceWrapper(object):
         """
         :type fbp: FullBodyPath
         """
-        if self.sim:
+        if self.move:
             for posture in fbp.postures: # type: FullBodyPosture
                 self.execute_full_body_posture(posture)
-                rospy.sleep(0.5)
+                # rospy.sleep(0.5)
 
     def move_camera_footprint(self, goal_pose):
-        self.base.move_camera(goal_pose)
+        if self.move:
+            self.base.move_camera(goal_pose)
 
     def move_base(self, goal_pose):
-        self.base.move_absolute(goal_pose)
+        if self.move:
+            self.base.move_absolute(goal_pose)
 
     def execute_full_body_posture(self, posture):
         """
         :type fbp: FullBodyPath
         """
-        if self.sim:
+        if self.move:
             if posture.type == posture.NO_TYPE:
                 assert False, '{} has no type'.format(posture)
             if posture.type == posture.BASE:
@@ -471,44 +494,37 @@ class TestPerceptionInterface(object):
         for shelf_id in shelf_ids:
             interface.giskard.drive_pose()
             path = interface.query_detect_shelf_layers_path(shelf_id)
-            # p1 = FullBodyPath()
-            # p1.postures.append(path.postures[0])
-            # path.postures.pop(0)
-            # interface.execute_full_body_path(p1)
-            # interface.giskard.floor_detection_pose()
-            # interface.execute_full_body_path(p1)
-            interface.execute_full_body_path(path)
-            interface.detect_shelf_layers(shelf_id)
+            interface.detect_shelf_layers(shelf_id, path)
             layers = interface.query_shelf_layers(shelf_id)
             for layer_id in layers:
                 path = interface.query_detect_facings_path(layer_id)
-                interface.execute_full_body_path(path)
-                interface.detect_facings(layer_id)
+                interface.detect_facings(layer_id, path)
                 facings = interface.query_facings(layer_id)
                 for facing_id in facings:
                     posture = interface.query_count_products_posture(facing_id)
                     interface.execute_full_body_posture(posture)
                     count = interface.count_products(facing_id)
 
-    def test_shop_scan_without_path(self, interface):
+
+    def test_shop_scan_without_path(self, interface_no_move):
         """
         :type interface: InterfaceWrapper
         """
-        shelf_ids = interface.query_shelf_systems()
+        shelf_ids = interface_no_move.query_shelf_systems()
         for shelf_id in shelf_ids:
             # path = interface.query_detect_shelf_layers_path(shelf_id)
             # interface.execute_full_body_path(path)
-            interface.detect_shelf_layers(shelf_id)
-            layers = interface.query_shelf_layers(shelf_id)
+            interface_no_move.detect_shelf_layers(shelf_id, None)
+            layers = interface_no_move.query_shelf_layers(shelf_id)
             for layer_id in layers:
                 # path = interface.query_detect_facings_path(layer_id)
                 # interface.execute_full_body_path(path)
-                interface.detect_facings(layer_id)
-                facings = interface.query_facings(layer_id)
+                interface_no_move.detect_facings(layer_id, None)
+                facings = interface_no_move.query_facings(layer_id)
                 for facing_id in facings:
                     # posture = interface.query_count_products_posture(facing_id)
                     # interface.execute_full_body_posture(posture)
-                    count = interface.count_products(facing_id)
+                    count = interface_no_move.count_products(facing_id)
         pass
 
     # -----------------------------------------------------test stupid calls--------------------------------------------

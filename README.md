@@ -1,3 +1,10 @@
+py.test test/test_perception_interface.py::TestPerceptionInterface::test_shop_scan
+
+
+
+
+
+
 This is a dummy interface according to refills interface spec v1.
 
 Clear beliefstate and reload initial beliefstate:

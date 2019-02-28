@@ -90,8 +90,12 @@ class SeparatorClustering(object):
         :type separator_array: SeparatorArray
         """
         if self.listen:
+            # print('registered separator')
             for separator in separator_array.separators:
-                p = transform_pose(self.current_frame_id, separator.separator_pose)
+                p = transform_pose('map', separator.separator_pose)
+                p.header.stamp = rospy.Time()
+                p = transform_pose(self.current_frame_id, p)
+                rospy.logwarn('cant transform separator')
                 if p is not None and self.separator_on_shelf_layer(p):
                     self.detections.append([p.pose.position.x, p.pose.position.y, p.pose.position.z])
 

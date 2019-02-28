@@ -31,7 +31,7 @@ class MoveBase(object):
         # self.min_dist_front = deque(maxlen=4)
         # self.min_dist_back = deque(maxlen=4)
         rospy.sleep(0.5)
-        self.timeout = 50
+        self.timeout = 60
         self.dist_to_shelfs = 1.4
 
     def move_absolute(self, target_pose, retry=True):
@@ -60,19 +60,32 @@ class MoveBase(object):
                 self.knowrob.finish_action()
             return result
 
-    def move_camera(self, target_pose):
-        target_pose = self.cam_pose_to_base_pose(target_pose)
-        self.goal_pub.publish(target_pose)
-        goal = MoveBaseGoal()
-        goal.target_pose = target_pose
-        self.client.send_goal(goal)
-        wait_result = self.client.wait_for_result(rospy.Duration(self.timeout))
-        result = self.client.get_result()
-        state = self.client.get_state()
-        if not (wait_result and state == GoalStatus.SUCCEEDED):
-            print('movement did not finish in time')
-            raise TimeoutError()
-        return result
+    def move_camera(self, target_pose, retry=True):
+        if self.enabled:
+            target_pose = self.cam_pose_to_base_pose(target_pose)
+            self.goal_pub.publish(target_pose)
+            goal = MoveBaseGoal()
+            goal.target_pose = target_pose
+            if self.knowrob is not None:
+                self.knowrob.start_base_movement(self.knowrob.pose_to_prolog(target_pose))
+            while True:
+                self.client.send_goal(goal)
+                wait_result = self.client.wait_for_result(rospy.Duration(self.timeout))
+                result = self.client.get_result()
+                state = self.client.get_state()
+                if wait_result and state == GoalStatus.SUCCEEDED:
+                    break
+                if retry:
+                    cmd = raw_input('base movement did not finish in time, retry? [y/n]')
+                    retry = cmd == 'y'
+                if not retry:
+                    print('movement did not finish in time')
+                    if self.knowrob is not None:
+                        self.knowrob.finish_action()
+                    raise TimeoutError()
+            if self.knowrob is not None:
+                self.knowrob.finish_action()
+            return result
 
     def cam_pose_to_base_pose(self, cam_pose):
         """

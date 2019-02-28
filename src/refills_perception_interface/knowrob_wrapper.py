@@ -46,6 +46,8 @@ GOAL_LOCATION = '\'http://knowrob.org/kb/knowrob.owl#goalLocation\''
 DETECTED_OBJECT = '\'http://knowrob.org/kb/knowrob.owl#detectedObject\''
 
 
+MAX_SHELF_HEIGHT = 1.1
+
 class KnowRob(object):
     prefix = 'knowrob_wrapper'
 
@@ -60,6 +62,8 @@ class KnowRob(object):
         self.query_lock = Lock()
         self.reset_object_state_publisher = rospy.ServiceProxy('/object_state_publisher/update_object_positions',
                                                                Trigger)
+        self.shelf_layer_from_facing = {}
+        self.shelf_system_from_layer = {}
 
     def print_with_prefix(self, msg):
         """
@@ -186,7 +190,7 @@ class KnowRob(object):
             floor_pose = lookup_pose(shelf_frame_id, solution['Frame'].replace('\'', ''))
             floors.append((floor_id, floor_pose))
         floors = list(sorted(floors, key=lambda x: x[1].pose.position.z))
-        floors = [x for x in floors if x[1].pose.position.z < 1.5]
+        floors = [x for x in floors if x[1].pose.position.z < MAX_SHELF_HEIGHT]
         self.floors = OrderedDict(floors)
         return self.floors
 
@@ -459,16 +463,22 @@ class KnowRob(object):
         :type shelf_layer_id: str
         :rtype: str
         """
-        q = 'shelf_layer_frame(\'{}\', Frame).'.format(shelf_layer_id)
-        return self.once(q)['Frame'][1:-1]
+        if shelf_layer_id not in self.shelf_system_from_layer:
+            q = 'shelf_layer_frame(\'{}\', Frame).'.format(shelf_layer_id)
+            shelf_system_id = self.once(q)['Frame'][1:-1]
+            self.shelf_system_from_layer[shelf_layer_id] = shelf_system_id
+        return self.shelf_system_from_layer[shelf_layer_id]
 
     def get_shelf_layer_from_facing(self, facing_id):
         """
         :type facing_id: str
         :rtype: str
         """
-        q = 'shelf_facing(Layer, \'{}\').'.format(facing_id)
-        return self.once(q)['Layer'][1:-1]
+        if facing_id not in self.shelf_layer_from_facing:
+            q = 'shelf_facing(Layer, \'{}\').'.format(facing_id)
+            layer_id =  self.once(q)['Layer'][1:-1]
+            self.shelf_layer_from_facing[facing_id] = layer_id
+        return self.shelf_layer_from_facing[facing_id]
 
     def get_shelf_layer_above(self, shelf_layer_id):
         """

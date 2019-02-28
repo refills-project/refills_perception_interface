@@ -15,7 +15,6 @@ from sensor_msgs.msg import JointState
 from tf.transformations import quaternion_about_axis
 from trajectory_msgs.msg import JointTrajectory
 
-from giskardpy.data_types import Quaternion
 from refills_perception_interface.knowrob_wrapper import KnowRob
 from refills_perception_interface.tfwrapper import transform_pose, msg_to_kdl, lookup_pose, lookup_transform, \
     kdl_to_posestamped
@@ -27,6 +26,7 @@ from refills_perception_interface.utils import kdl_to_pose
 # TORSO_LIN2_UPPER_LIMIT = 1.295
 MIN_CAM_HEIGHT = 0.35
 MAX_CAM_HEIGHT = 1.2
+
 
 # CAM_IN_BASE_LINK = 0.862
 
@@ -104,7 +104,7 @@ class Paths(object):
     def is_right(self, shelf_system_id):
         return self.knowrob.is_right(shelf_system_id)
 
-    def cam_pose_in_front_of_shelf(self, shelf_system_id, x=0., y=-0.5, x_limit=0.1):
+    def cam_pose_in_front_of_shelf(self, shelf_system_id, frame_id=None, x=0., y=-0.55, x_limit=0.1, goal_angle=0.):
         """
         computes a goal for base_link such that torso_Schwenker_Cams is at x/y in front of shelf_system_id
         :type shelf_system_id: str
@@ -115,19 +115,40 @@ class Paths(object):
         :rtype: PoseStamped
         """
         width = self.knowrob.get_shelf_system_width(shelf_system_id)
-        shelf_frame_id = self.knowrob.get_perceived_frame_id(shelf_system_id)
         cam_pose = PoseStamped()
-        cam_pose.header.frame_id = shelf_frame_id
-        cam_pose.pose.position.x = max(0 + x_limit, min(width - x_limit, x))
-        cam_pose.pose.position.y = y
-        if self.is_left(shelf_system_id):
-            cam_pose.pose.orientation = Quaternion(*quaternion_about_axis(0.0, [0, 0, 1]))
+        if frame_id is None:
+            cam_pose.header.frame_id = self.knowrob.get_perceived_frame_id(shelf_system_id)
         else:
-            cam_pose.pose.orientation = Quaternion(*quaternion_about_axis(np.pi, [0, 0, 1]))
-
-        # base_pose = self.cam_pose_to_base_pose(cam_pose)
-        # return base_pose
+            cam_pose.header.frame_id = frame_id
+        cam_pose.pose.position.x = max(0 + x_limit, min(width - x_limit, x))
+        cam_pose.pose.position.y = np.cos(goal_angle) * y
+        cam_pose.pose.orientation = self.get_goal_base_rotation(shelf_system_id)
+        cam_pose = transform_pose('map', cam_pose)
+        cam_pose.pose.position.z = 0
         return cam_pose
+
+    def cam_pose_in_front_of_layer(self, shelf_layer_id, x=0., y=-0.6, x_limit=0.1, goal_angle=0.):
+        """
+        computes a goal for base_link such that torso_Schwenker_Cams is at x/y in front of shelf_system_id
+        :type shelf_system_id: str
+        :type x: float
+        :type y: float
+        :param x_limit: safety buffer range along x axis of shelf system
+        :type x_limit: float
+        :rtype: PoseStamped
+        """
+        shelf_system_id = self.knowrob.get_shelf_system_from_layer(shelf_layer_id)
+        return self.cam_pose_in_front_of_shelf(shelf_system_id, self.knowrob.get_perceived_frame_id(shelf_layer_id),
+                                               x, y, x_limit, goal_angle)
+
+    def get_goal_base_rotation(self, shelf_system_id):
+        if self.is_left(shelf_system_id):
+            return Quaternion(*quaternion_about_axis(0.0, [0, 0, 1]))
+        return Quaternion(*quaternion_about_axis(np.pi, [0, 0, 1]))
+
+    def base_pose_in_front_of_shelf(self, shelf_system_id, x=0., y=-0.5, x_limit=0.1):
+        base_pose = self.cam_pose_in_front_of_shelf(shelf_system_id, x=x, y=y, x_limit=x_limit, goal_angle=0)
+        return base_pose
 
     def cam_pose_to_base_pose(self, cam_pose):
         """
@@ -186,11 +207,10 @@ class Paths(object):
 
         # calculate base pose
 
-        base_pose = self.cam_pose_in_front_of_shelf(shelf_system_id, shelf_system_width / 2)
+        base_pose = self.base_pose_in_front_of_shelf(shelf_system_id, shelf_system_width / 2, y=-0.85)
 
         full_body_pose = FullBodyPosture()
-        full_body_pose.base_pos = deepcopy(base_pose)
-        full_body_pose.base_pos.pose.position.y -= 0.25
+        full_body_pose.base_pos = base_pose
         full_body_pose.type = FullBodyPosture.BASE
         full_body_path.postures.append(full_body_pose)
 
@@ -203,7 +223,7 @@ class Paths(object):
         full_body_path.postures.append(full_body_pose)
 
         full_body_pose = FullBodyPosture()
-        full_body_pose.base_pos = base_pose
+        full_body_pose.base_pos = self.cam_pose_in_front_of_shelf(shelf_system_id, x=shelf_system_width / 2)
         full_body_pose.type = FullBodyPosture.CAM_FOOTPRINT
         full_body_path.postures.append(full_body_pose)
 
@@ -244,21 +264,25 @@ class Paths(object):
         full_body_pose.type = FullBodyPosture.CAMERA
 
         if self.layer_too_low(shelf_layer_height):
-            full_body_pose = self.get_cam_pose(shelf_layer_height + to_low_offset, radians(-25), self.is_left(shelf_system_id))
+            goal_angle = radians(-20)
+            full_body_pose = self.get_cam_pose(shelf_layer_height + to_low_offset, goal_angle,
+                                               self.is_left(shelf_system_id))
         else:
-            full_body_pose = self.get_cam_pose(shelf_layer_height + other_offset, radians(0), self.is_left(shelf_system_id))
+            goal_angle = radians(0)
+            full_body_pose = self.get_cam_pose(shelf_layer_height + other_offset, goal_angle,
+                                               self.is_left(shelf_system_id))
 
         full_body_path.postures.append(full_body_pose)
 
         # base poses
         # start base poses
-        start_base_pose = self.cam_pose_in_front_of_shelf(shelf_system_id)
+        start_base_pose = self.cam_pose_in_front_of_layer(shelf_layer_id, goal_angle=goal_angle)
         start_base_pose = transform_pose('map', start_base_pose)
         start_full_body_pose = FullBodyPosture()
         start_full_body_pose.type = FullBodyPosture.CAM_FOOTPRINT
         start_full_body_pose.base_pos = start_base_pose
 
-        end_base_pose = self.cam_pose_in_front_of_shelf(shelf_system_id, x=shelf_system_width)
+        end_base_pose = self.cam_pose_in_front_of_layer(shelf_layer_id, x=shelf_system_width, goal_angle=goal_angle)
         end_base_pose = transform_pose('map', end_base_pose)
         end_full_body_pose = FullBodyPosture()
         end_full_body_pose.type = FullBodyPosture.CAM_FOOTPRINT
@@ -295,16 +319,20 @@ class Paths(object):
 
         # joints
         shelf_layer_height = lookup_pose('map', shelf_layer_frame_id).pose.position.z
-        counting_offset = 0.35
+        counting_offset = 0.3
         # TODO tune this number
         torso_rot_1_height = shelf_layer_height + counting_offset
         torso_rot_1_height = max(MIN_CAM_HEIGHT, torso_rot_1_height)
 
-        full_body_pose = self.get_cam_pose(torso_rot_1_height, radians(-25), self.is_left(shelf_system_id))
+        goal_angle = radians(-20)
+        full_body_pose = self.get_cam_pose(torso_rot_1_height, goal_angle, self.is_left(shelf_system_id))
 
         facing_pose_on_layer = lookup_pose(shelf_layer_frame_id, facing_frame_id)
 
-        base_pose = self.cam_pose_in_front_of_shelf(shelf_system_id, x=facing_pose_on_layer.pose.position.x)
+        # base_pose = self.cam_pose_in_front_of_facing(facing_id, x=0, x_limit=0, goal_angle=goal_angle)
+        base_pose = self.cam_pose_in_front_of_layer(shelf_layer_id, x=facing_pose_on_layer.pose.position.x,
+                                                    y=-.6,
+                                                    goal_angle=goal_angle)
 
         base_pose = transform_pose('map', base_pose)
 

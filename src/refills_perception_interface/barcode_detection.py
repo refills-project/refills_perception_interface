@@ -89,14 +89,14 @@ class BarcodeDetector(object):
         fills a dict that maps barcode to list of PoseStamped where it was seen.
         :type data: Barcode
         """
-        # FIXME why three transforms?
         if self.listen:
             p = transform_pose(MAP, data.barcode_pose)
             if p is not None:
+                # because sometimes barcodes are older than this frame id
                 p.header.stamp = rospy.Time()
                 p = transform_pose(self.get_frame_id(), p)
-                if p.pose.position.x > 0.0 and p.pose.position.x < self.shelf_width and \
-                        p.pose.position.z < 0.08 and p.pose.position.z > -0.08:
+                if p is not None and (p.pose.position.x > 0.0 and p.pose.position.x < self.shelf_width and
+                        p.pose.position.z < 0.08 and p.pose.position.z > -0.08):
                     self.barcodes[data.barcode[1:-1]].append(p)
 
     def publish_as_marker(self, barcodes):

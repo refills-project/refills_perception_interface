@@ -102,6 +102,8 @@ def update_shelf_system_pose(knowrob, top_layer_id, separators):
     """
     if not knowrob.is_bottom_layer(top_layer_id):
         return
+    if len(separators) == 0:
+        return
     shelf_system_id = knowrob.get_shelf_system_from_layer(top_layer_id)
     shelf_system_frame_id = knowrob.get_object_frame_id(shelf_system_id)
     separators_in_system = [transform_pose(shelf_system_frame_id, p) for p in separators]
