@@ -208,6 +208,20 @@ class RoboSherlock(FakeRoboSherlock):
         r = self.robosherlock_service.call(req)
         self.print_with_prefix('got: {}'.format(r))
 
+    def rs_pose_to_geom_msgs_pose(self,  pose):
+        p = PoseStamped()
+        p.header.frame_id = pose['frame']
+        p.header.stamp = rospy.Time(pose['timestamp'] / 1000000000)
+        p.pose.position.x = pose['translation'][0]
+        p.pose.position.y = pose['translation'][1]
+        p.pose.position.z = pose['translation'][2]
+        p.pose.orientation.x = pose['rotation'][0]
+        p.pose.orientation.y = pose['rotation'][1]
+        p.pose.orientation.z = pose['rotation'][2]
+        p.pose.orientation.w = pose['rotation'][3]
+        return p
+
+
     def stop_detect_shelf_layers(self, shelf_system_id):
         """
         :type shelf_system_id: str
@@ -226,8 +240,12 @@ class RoboSherlock(FakeRoboSherlock):
         self.print_with_prefix('received: {}'.format(result))
         floors = []
         for floor in result.answer:
-            p = message_converter.convert_dictionary_to_ros_message('geometry_msgs/PoseStamped',
-                                                                    json.loads(floor)['poses'][0]['pose_stamped'])
+            pose = json.loads(floor)['rs.annotation.PoseAnnotation'][0]['camera']['rs.tf.StampedPose']
+            p = self.rs_pose_to_geom_msgs_pose(pose)
+
+
+            # p = message_converter.convert_dictionary_to_ros_message('geometry_msgs/PoseStamped',
+            #                                                         json.loads(floor)['poses'][0]['pose_stamped'])
             # TODO potential speedup, safe and reuse transform
             p = transform_pose(shelf_frame, p)
             floors.append(p.pose.position.z)
@@ -252,14 +270,16 @@ class RoboSherlock(FakeRoboSherlock):
         rospy.sleep(0.4)
         result = self.robosherlock_service.call(req)
         self.print_with_prefix('received: {}'.format(result))
+        count = 0
         if len(result.answer):
             try:
-                result_dict = [json.loads(x)['detection'] for x in result.answer]
-                confidence = [x for x in result_dict if x['source'] == 'FacingDetection'][0]['confidence']
+                # result_dict = [json.loads(x)['detection'] for x in result.answer]
+                count = json.loads(result.answer[0])['rs_refills.refills.ProductCount'][0]['product_count']
+                # confidence = [x for x in result_dict if x['source'] == 'FacingDetection'][0]['confidence']
             except:
                 confidence = 0.01
                 result.answer = [0,0]
                 rospy.logerr(result.answer)
             self.knowrob.assert_confidence(facing_id, confidence)
-        count = max(0,len(result.answer) - 1)
+        # count = max(0,len(result.answer) - 1)
         return count
