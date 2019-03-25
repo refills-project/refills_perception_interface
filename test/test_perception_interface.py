@@ -49,6 +49,7 @@ def setup(request, ros):
     # request.addfinalizer(reset_interface)
     return i
 
+
 @pytest.fixture()
 def interface_no_move(setup):
     """
@@ -92,7 +93,7 @@ class InterfaceWrapper(object):
                                                         FinishPerception)
 
         self.query_reset_belief_state_srv = rospy.ServiceProxy(DummyInterfaceNodeName + '/reset_beliefstate',
-                                                        Trigger)
+                                                               Trigger)
 
         self.query_shelf_detection_path_srv = rospy.ServiceProxy(
             DummyInterfaceNodeName + '/query_detect_shelf_layers_path',
@@ -282,14 +283,14 @@ class InterfaceWrapper(object):
              'Torso_rot_1': 'torso_rot_1'}
         return d[joint_name]
 
-    def execute_full_body_path(self, fbp):
+    def execute_full_body_path(self, fbp, sleep=0):
         """
         :type fbp: FullBodyPath
         """
         if self.move:
-            for posture in fbp.postures: # type: FullBodyPosture
+            for posture in fbp.postures:  # type: FullBodyPosture
                 self.execute_full_body_posture(posture)
-                # rospy.sleep(0.5)
+                rospy.sleep(sleep)
 
     def move_camera_footprint(self, goal_pose):
         if self.move:
@@ -457,7 +458,7 @@ class TestPerceptionInterface(object):
 
     def test_query_detect_shelf_layers_path(self, interface):
         for shelf_id in interface.query_shelf_systems():
-            path = interface.query_detect_shelf_layers_path(shelf_id) # type: FullBodyPath
+            path = interface.query_detect_shelf_layers_path(shelf_id)  # type: FullBodyPath
             interface.execute_full_body_path(path)
             assert len(path.postures) > 0
             for posture in path.postures:
@@ -467,7 +468,7 @@ class TestPerceptionInterface(object):
     def test_query_detect_facings_path(self, interface):
         for shelf_id in interface.query_shelf_systems():
             for layer_id in interface.query_shelf_layers(shelf_id):
-                path = interface.query_detect_facings_path(layer_id) # type: FullBodyPath
+                path = interface.query_detect_facings_path(layer_id)  # type: FullBodyPath
                 interface.execute_full_body_path(path)
                 assert len(path.postures) == 2
                 for posture in path.postures:
@@ -481,9 +482,23 @@ class TestPerceptionInterface(object):
             for layer_id in layers:
                 facings = interface.detect_facings(layer_id)
                 for facing_id in facings:
-                    pose = interface.query_count_products_posture(facing_id) # type: FullBodyPosture
+                    pose = interface.query_count_products_posture(facing_id)  # type: FullBodyPosture
                     assert pose.base_pos.header.frame_id == 'map' or pose.base_pos.header.frame_id == '/map'
                     assert len(pose.joints) == 3
+
+    def test_navigation_paths(self, interface):
+        """
+        :type interface: InterfaceWrapper
+        :return:
+        """
+        shelf_ids = interface.query_shelf_systems()
+        for shelf_id in shelf_ids:
+            print('current shelf id {}'.format(shelf_id))
+            interface.giskard.drive_pose()
+            path = interface.query_detect_shelf_layers_path(shelf_id)
+            path.postures = [x for x in path.postures if x.type == FullBodyPosture.BASE]
+            interface.execute_full_body_path(path, 1.0)
+            pass
 
     def test_shop_scan(self, interface):
         """
@@ -504,7 +519,6 @@ class TestPerceptionInterface(object):
                     posture = interface.query_count_products_posture(facing_id)
                     interface.execute_full_body_posture(posture)
                     count = interface.count_products(facing_id)
-
 
     def test_shop_scan_without_path(self, interface_no_move):
         """
@@ -626,8 +640,6 @@ class TestPerceptionInterface(object):
     #                                         expected_state=GoalStatus.ABORTED)
     #     interface.get_detect_facings_result(expected_error=DetectShelfLayersResult.SERVER_BUSY,
     #                                              expected_state=GoalStatus.ABORTED)
-
-
 
     # def test_detect_cancel_finish(self, interface):
     # FIXME?

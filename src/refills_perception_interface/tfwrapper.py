@@ -12,7 +12,7 @@ tfBuffer = None
 tf_listener = None
 
 
-def init(tf_buffer_size=15):
+def init(tf_buffer_size=15, sleep=5.0):
     """
     If you want to specify the buffer size, call this function manually, otherwise don't worry about it.
     :param tf_buffer_size: in secs
@@ -21,7 +21,7 @@ def init(tf_buffer_size=15):
     global tfBuffer, tf_listener
     tfBuffer = Buffer(rospy.Duration(tf_buffer_size))
     tf_listener = TransformListener(tfBuffer)
-    rospy.sleep(5.0)
+    rospy.sleep(sleep)
 
 
 def transform_pose(target_frame, pose):
