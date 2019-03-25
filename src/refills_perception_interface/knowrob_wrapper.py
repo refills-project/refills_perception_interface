@@ -117,11 +117,16 @@ class KnowRob(object):
             self.left_right_dict = OrderedDict()
             with open(self.path_to_json, 'r') as f:
                 self.left_right_dict = ordered_load(f, yaml.SafeLoader)
-            for shelf_system_id in self.left_right_dict:
+            prev_id = None
+            for i, shelf_system_id in enumerate(self.left_right_dict):
+                if i > 0 and prev_id != self.left_right_dict[shelf_system_id]['starting-point']:
+                    raise TypeError('starting point doesn\'t match the prev entry at {}'.format(shelf_system_id))
+                prev_id = shelf_system_id
                 via_points = self.left_right_dict[shelf_system_id]['via-points']
                 for i in range(len(via_points)):
                     via_points[i] = convert_dictionary_to_ros_message("geometry_msgs/PoseStamped", via_points[i])
         except Exception as e:
+            rospy.logwarn(e)
             rospy.logwarn('failed to load left right json')
 
     def is_left(self, shelf_system_id):
