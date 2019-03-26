@@ -240,12 +240,12 @@ class RoboSherlock(FakeRoboSherlock):
         self.print_with_prefix('received: {}'.format(result))
         floors = []
         for floor in result.answer:
-            pose = json.loads(floor)['rs.annotation.PoseAnnotation'][0]['camera']['rs.tf.StampedPose']
-            p = self.rs_pose_to_geom_msgs_pose(pose)
+            # pose = json.loads(floor)['rs.annotation.PoseAnnotation'][0]['camera']['rs.tf.StampedPose']
+            # p = self.rs_pose_to_geom_msgs_pose(pose)
 
 
-            # p = message_converter.convert_dictionary_to_ros_message('geometry_msgs/PoseStamped',
-            #                                                         json.loads(floor)['poses'][0]['pose_stamped'])
+            p = message_converter.convert_dictionary_to_ros_message('geometry_msgs/PoseStamped',
+                                                                    json.loads(floor)['poses'][0]['pose_stamped'])
             # TODO potential speedup, safe and reuse transform
             p = transform_pose(shelf_frame, p)
             floors.append(p.pose.position.z)
@@ -273,13 +273,13 @@ class RoboSherlock(FakeRoboSherlock):
         count = 0
         if len(result.answer):
             try:
-                # result_dict = [json.loads(x)['detection'] for x in result.answer]
-                count = json.loads(result.answer[0])['rs_refills.refills.ProductCount'][0]['product_count']
-                # confidence = [x for x in result_dict if x['source'] == 'FacingDetection'][0]['confidence']
+                result_dict = [json.loads(x)['detection'] for x in result.answer]
+                # count = json.loads(result.answer[0])['rs_refills.refills.ProductCount'][0]['product_count']
+                confidence = [x for x in result_dict if x['source'] == 'FacingDetection'][0]['confidence']
             except:
                 confidence = 0.01
                 result.answer = [0,0]
                 rospy.logerr(result.answer)
             self.knowrob.assert_confidence(facing_id, confidence)
-        # count = max(0,len(result.answer) - 1)
+        count = max(0,len(result.answer) - 1)
         return count

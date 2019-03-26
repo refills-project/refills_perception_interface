@@ -24,7 +24,7 @@ def init(tf_buffer_size=15):
     rospy.sleep(5.0)
 
 
-def transform_pose(target_frame, pose):
+def transform_pose(target_frame, pose, transform=None):
     """
     Transforms a pose stamped into a different target frame.
     :type target_frame: str
@@ -32,18 +32,20 @@ def transform_pose(target_frame, pose):
     :return: Transformed pose of None on loop failure
     :rtype: PoseStamped
     """
-    global tfBuffer
-    if tfBuffer is None:
-        init()
-    try:
-        transform = tfBuffer.lookup_transform(target_frame,
-                                              pose.header.frame_id,  # source frame
-                                              pose.header.stamp,
-                                              rospy.Duration(5.0))
-        new_pose = do_transform_pose(pose, transform)
-        return new_pose
-    except ExtrapolationException as e:
-        rospy.logwarn(e)
+    if transform is None:
+        global tfBuffer
+        if tfBuffer is None:
+            init()
+        try:
+            transform = tfBuffer.lookup_transform(target_frame,
+                                                  pose.header.frame_id,  # source frame
+                                                  pose.header.stamp,
+                                                  rospy.Duration(5.0))
+        except ExtrapolationException as e:
+            rospy.logwarn(e)
+            return None
+    new_pose = do_transform_pose(pose, transform)
+    return new_pose
 
 
 def transform_vector(target_frame, vector):
