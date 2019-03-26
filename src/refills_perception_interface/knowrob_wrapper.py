@@ -10,6 +10,7 @@ from geometry_msgs.msg import PoseStamped, Point, Quaternion
 import numpy as np
 
 from std_srvs.srv import Trigger, TriggerRequest
+from tf2_geometry_msgs import do_transform_pose
 from visualization_msgs.msg import Marker
 
 from refills_perception_interface.not_hacks import add_separator_between_barcodes, add_edge_separators, \
@@ -326,9 +327,9 @@ class KnowRob(object):
         :type shelf_layer_id: str
         :type separators: list of PoseStamped, positions of separators
         """
-        #TODO possibile speed but, reuse transform
-        separator_zs = [transform_pose(self.get_perceived_frame_id(shelf_layer_id), p).pose.position.z for p in separators]
-        if len(separator_zs) > 0:
+        if len(separators) > 0:
+            transform = lookup_transform(self.get_perceived_frame_id(shelf_layer_id), separators[0].header.frame_id)
+            separator_zs = [do_transform_pose(p, transform).pose.position.z for p in separators]
             new_floor_height = np.mean(separator_zs)
             current_floor_pose = lookup_pose(MAP, self.get_object_frame_id(shelf_layer_id))
             current_floor_pose.pose.position.z += new_floor_height
@@ -377,6 +378,9 @@ class KnowRob(object):
                 r = self.once(q)
 
     def add_separators_and_barcodes(self, shelf_layer_id, separators, barcodes):
+        t = lookup_transform(self.get_perceived_frame_id(shelf_layer_id), 'map')
+        separators = [do_transform_pose(p, t) for p in separators]
+        barcodes = {code: do_transform_pose(p, t) for code, p in barcodes.items()}
         shelf_layer_width = self.get_shelf_layer_width(shelf_layer_id)
         separators_xs = [p.pose.position.x / shelf_layer_width for p in separators]
         barcodes = [(p.pose.position.x/shelf_layer_width, barcode) for barcode, p in barcodes.items()]

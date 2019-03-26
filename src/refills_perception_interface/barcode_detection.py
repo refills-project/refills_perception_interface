@@ -14,11 +14,12 @@ from refills_msgs.msg import Barcode
 from rospy import ROSException
 from std_msgs.msg import ColorRGBA
 from tf.transformations import quaternion_from_euler
+from tf2_geometry_msgs import do_transform_pose
 from visualization_msgs.msg import Marker, MarkerArray
 from rospkg import RosPack
 
 from refills_perception_interface.knowrob_wrapper import KnowRob
-from refills_perception_interface.tfwrapper import transform_pose
+from refills_perception_interface.tfwrapper import transform_pose, lookup_transform
 
 MAP = 'map'
 
@@ -52,7 +53,9 @@ class BarcodeDetector(object):
         self.shelf_layer_id = shelf_layer_id
         self.barcodes = defaultdict(list)
         self.shelf_width = self.knowrob.get_shelf_layer_width(shelf_layer_id)
+        self.current_shelf_layer_width = self.knowrob.get_shelf_layer_width(shelf_layer_id)
         self.current_frame_id = self.knowrob.get_perceived_frame_id(self.shelf_layer_id)
+        self.T_map___layer = lookup_transform(self.current_frame_id, 'map')
         self.listen = True
 
     def stop_listening(self):
@@ -78,7 +81,7 @@ class BarcodeDetector(object):
             positions = [[p.pose.position.x, p.pose.position.y, p.pose.position.z] for p in poses]
             position = np.mean(positions, axis=0)
             p = PoseStamped()
-            p.header.frame_id = self.get_frame_id()
+            p.header.frame_id = 'map'
             p.pose.position = Point(*position)
             p.pose.orientation.w = 1
             barcodes[barcode] = p
@@ -92,16 +95,29 @@ class BarcodeDetector(object):
         if self.listen:
             p = transform_pose(MAP, data.barcode_pose)
             if p is not None:
-                # because sometimes barcodes are older than this frame id
                 p.header.stamp = rospy.Time()
-                p = transform_pose(self.get_frame_id(), p)
-                if p is not None and (p.pose.position.x > 0.0 and p.pose.position.x < self.shelf_width and
-                        p.pose.position.z < 0.08 and p.pose.position.z > -0.08):
+                # p = transform_pose(self.get_frame_id(), p)
+                if p is not None and self.barcode_on_shelf_layer(p):
                     self.barcodes[data.barcode[1:-1]].append(p)
+
+    def barcode_on_shelf_layer(self, separator_pose, width_threshold=0.0, height_threshold=0.08):
+        """
+        :param separator_pose: pose of separator in floor frame
+        :type separator_pose: PoseStamped
+        :param width_threshold: all separators that are this close to the width edge are filtered.
+        :type width_threshold: float
+        :type height_threshold: float
+        :return: bool
+        """
+        separator_pose = do_transform_pose(separator_pose, self.T_map___layer)
+        x = separator_pose.pose.position.x
+        z = separator_pose.pose.position.z
+        return width_threshold <= x and x <= self.current_shelf_layer_width - width_threshold and \
+               -height_threshold <= z and z <= height_threshold
 
     def publish_as_marker(self, barcodes):
         """
-        Publishes barcodes as text marker.
+        Publishes barcodes as text marker.self.current_shelf_layer_width = self.knowrob.get_shelf_layer_width(shelf_layer_id)
         """
         ma = MarkerArray()
         frame_id = self.get_frame_id()

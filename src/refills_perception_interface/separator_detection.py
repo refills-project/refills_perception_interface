@@ -9,10 +9,11 @@ from geometry_msgs.msg import Point, Vector3, PoseStamped, Quaternion
 from refills_msgs.msg import SeparatorArray
 from std_msgs.msg import ColorRGBA
 from tf.transformations import quaternion_about_axis
+from tf2_geometry_msgs import do_transform_pose
 from visualization_msgs.msg import MarkerArray
 
 from refills_perception_interface.knowrob_wrapper import KnowRob
-from refills_perception_interface.tfwrapper import transform_pose
+from refills_perception_interface.tfwrapper import transform_pose, lookup_pose, lookup_transform
 from refills_perception_interface.utils import print_with_prefix
 
 
@@ -46,6 +47,7 @@ class SeparatorClustering(object):
         self.marker_ns = 'separator_{}'.format(shelf_layer_id)
         self.current_shelf_layer_width = self.knowrob.get_shelf_layer_width(shelf_layer_id)
         self.current_frame_id = self.knowrob.get_perceived_frame_id(self.current_shelf_layer_id)
+        self.T_map___layer = lookup_transform(self.current_frame_id, 'map')
         self.listen = True
         print_with_prefix('started', self.prefix)
 
@@ -94,12 +96,12 @@ class SeparatorClustering(object):
             for separator in separator_array.separators:
                 p = transform_pose('map', separator.separator_pose)
                 p.header.stamp = rospy.Time()
-                p = transform_pose(self.current_frame_id, p)
-                rospy.logwarn('cant transform separator')
+                # p = transform_pose(self.current_frame_id, p)
+                # rospy.logwarn('cant transform separator')
                 if p is not None and self.separator_on_shelf_layer(p):
                     self.detections.append([p.pose.position.x, p.pose.position.y, p.pose.position.z])
 
-    def separator_on_shelf_layer(self, separator_pose, width_threshold=0.03, height_threshold=0.05):
+    def separator_on_shelf_layer(self, separator_pose, width_threshold=0.03, height_threshold=0.06):
         """
         :param separator_pose: pose of separator in floor frame
         :type separator_pose: PoseStamped
@@ -108,6 +110,7 @@ class SeparatorClustering(object):
         :type height_threshold: float
         :return: bool
         """
+        separator_pose = do_transform_pose(separator_pose, self.T_map___layer)
         x = separator_pose.pose.position.x
         z = separator_pose.pose.position.z
         return width_threshold <= x and x <= self.current_shelf_layer_width - width_threshold and \
@@ -122,7 +125,7 @@ class SeparatorClustering(object):
         """
         data = np.array(self.detections)
         separators = []
-        old_frame_id = self.get_frame_id()
+        # old_frame_id = self.get_frame_id()
         if len(data) == 0:
             print_with_prefix('no separators detected', self.prefix)
         else:
@@ -132,7 +135,7 @@ class SeparatorClustering(object):
             for i, label in enumerate(labels):
                 if label != -1:
                     separator = PoseStamped()
-                    separator.header.frame_id = old_frame_id
+                    separator.header.frame_id = 'map'
                     separator.pose.position = Point(*self.cluster_to_separator(data[clusters.labels_ == label]))
                     separator.pose.orientation = Quaternion(*quaternion_about_axis(-np.pi / 2, [0, 0, 1]))
                     separators.append(separator)
