@@ -62,6 +62,7 @@ class KnowRob(object):
         self.prolog = json_prolog.Prolog()
         self.print_with_prefix('knowrob showed up')
         self.query_lock = Lock()
+        rospy.wait_for_service('/object_state_publisher/update_object_positions')
         self.reset_object_state_publisher = rospy.ServiceProxy('/object_state_publisher/update_object_positions',
                                                                Trigger)
         self.shelf_layer_from_facing = {}
