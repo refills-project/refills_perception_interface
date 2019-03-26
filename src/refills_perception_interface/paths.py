@@ -104,6 +104,9 @@ class Paths(object):
     def is_right(self, shelf_system_id):
         return self.knowrob.is_right(shelf_system_id)
 
+    def get_via_points(self, shelf_system_id):
+        return self.knowrob.left_right_dict[shelf_system_id]['via-points']
+
     def cam_pose_in_front_of_shelf(self, shelf_system_id, frame_id=None, x=0., y=-0.55, x_limit=0.1, goal_angle=0.):
         """
         computes a goal for base_link such that torso_Schwenker_Cams is at x/y in front of shelf_system_id
@@ -205,9 +208,22 @@ class Paths(object):
         # shelf_system_height = self.knowrob.get_shelf_system_height(shelf_system_id)
         full_body_path = FullBodyPath()
 
-        # calculate base pose
+        # via points
+        for via_point in self.get_via_points(shelf_system_id):
+            full_body_pose = FullBodyPosture()
+            full_body_pose.base_pos = via_point
+            full_body_pose.type = FullBodyPosture.BASE
+            full_body_path.postures.append(full_body_pose)
 
+
+        # calculate base pose
         base_pose = self.base_pose_in_front_of_shelf(shelf_system_id, shelf_system_width / 2, y=-0.85)
+        base_pose = transform_pose(self.knowrob.get_perceived_frame_id(shelf_system_id), base_pose)
+        if self.is_left(shelf_system_id):
+            base_pose.pose.position.x += 0.5
+        else:
+            base_pose.pose.position.x -= 0.5
+        base_pose = transform_pose('map', base_pose)
 
         full_body_pose = FullBodyPosture()
         full_body_pose.base_pos = base_pose

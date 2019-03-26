@@ -1,6 +1,7 @@
 import json
 import string
 import traceback
+import yaml
 from collections import OrderedDict, defaultdict
 from multiprocessing import Lock
 from rospkg import RosPack
@@ -9,6 +10,7 @@ import rospy
 from geometry_msgs.msg import PoseStamped, Point, Quaternion
 import numpy as np
 
+from rospy_message_converter.message_converter import convert_dictionary_to_ros_message
 from std_srvs.srv import Trigger, TriggerRequest
 from tf2_geometry_msgs import do_transform_pose
 from visualization_msgs.msg import Marker
@@ -16,7 +18,7 @@ from visualization_msgs.msg import Marker
 from refills_perception_interface.not_hacks import add_separator_between_barcodes, add_edge_separators, \
     merge_close_separators, merge_close_shelf_layers
 from refills_perception_interface.tfwrapper import transform_pose, lookup_pose, lookup_transform
-from refills_perception_interface.utils import print_with_prefix
+from refills_perception_interface.utils import print_with_prefix, ordered_load
 from json_prolog import json_prolog
 from json_prolog.json_prolog import PrologException
 
@@ -61,6 +63,7 @@ class KnowRob(object):
         self.prolog = json_prolog.Prolog()
         self.print_with_prefix('knowrob showed up')
         self.query_lock = Lock()
+        rospy.wait_for_service('/object_state_publisher/update_object_positions')
         self.reset_object_state_publisher = rospy.ServiceProxy('/object_state_publisher/update_object_positions',
                                                                Trigger)
         self.shelf_layer_from_facing = {}
@@ -115,15 +118,24 @@ class KnowRob(object):
             self.path_to_json = rospy.get_param('~path_to_json')
             self.left_right_dict = OrderedDict()
             with open(self.path_to_json, 'r') as f:
-                self.left_right_dict = json.load(f, object_pairs_hook=OrderedDict)
+                self.left_right_dict = ordered_load(f, yaml.SafeLoader)
+            prev_id = None
+            for i, shelf_system_id in enumerate(self.left_right_dict):
+                if i > 0 and prev_id != self.left_right_dict[shelf_system_id]['starting-point']:
+                    raise TypeError('starting point doesn\'t match the prev entry at {}'.format(shelf_system_id))
+                prev_id = shelf_system_id
+                via_points = self.left_right_dict[shelf_system_id]['via-points']
+                for i in range(len(via_points)):
+                    via_points[i] = convert_dictionary_to_ros_message("geometry_msgs/PoseStamped", via_points[i])
         except Exception as e:
+            rospy.logwarn(e)
             rospy.logwarn('failed to load left right json')
 
     def is_left(self, shelf_system_id):
-        return self.left_right_dict[shelf_system_id] == u'left'
+        return self.left_right_dict[shelf_system_id]['side'] == 'left'
 
     def is_right(self, shelf_system_id):
-        return self.left_right_dict[shelf_system_id] == u'right'
+        return self.left_right_dict[shelf_system_id]['side'] == 'right'
 
     def get_shelf_system_ids(self, filter_with_left_right_dict=True):
         """
@@ -534,6 +546,7 @@ class KnowRob(object):
         self.initial_beliefstate = rospy.get_param('~initial_beliefstate')
         if self.load_owl(self.initial_beliefstate):
             print_with_prefix('loaded initial beliefstate {}'.format(self.initial_beliefstate), self.prefix)
+            self.reset_object_state_publisher.call(TriggerRequest())
             return True
         else:
             print_with_prefix('error loading initial beliefstate {}'.format(self.initial_beliefstate), self.prefix)
