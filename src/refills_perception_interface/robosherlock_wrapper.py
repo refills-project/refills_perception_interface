@@ -57,6 +57,7 @@ class FakeRoboSherlock(object):
             x = (i / (self.number_of_facings)) * width
             separator.pose.position = Point(x, 0.01*i, 0.01)
             separator.pose.orientation.w = 1
+            separator = transform_pose('map', separator)
             separators.append(separator)
         return separators
 
@@ -86,6 +87,7 @@ class FakeRoboSherlock(object):
             x = ((i + .5) / (self.number_of_facings))*width
             barcode.pose.position = Point(x, 0, 0)
             barcode.pose.orientation.w = 1
+            barcode = transform_pose('map', barcode)
             try:
                 if np.random.choice([True, False]):
                     barcodes[str(self.barcodes.pop())] = barcode
