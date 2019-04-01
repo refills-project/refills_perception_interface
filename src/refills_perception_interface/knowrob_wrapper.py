@@ -340,11 +340,11 @@ class KnowRob(object):
         :type separators: list of PoseStamped, positions of separators
         """
         if len(separators) > 0:
-            transform = lookup_transform(self.get_perceived_frame_id(shelf_layer_id), separators[0].header.frame_id)
-            separator_zs = [do_transform_pose(p, transform).pose.position.z for p in separators]
+            old_p = lookup_pose('map', self.get_perceived_frame_id(shelf_layer_id))
+            separator_zs = [p.pose.position.z for p in separators]
             new_floor_height = np.mean(separator_zs)
             current_floor_pose = lookup_pose(MAP, self.get_object_frame_id(shelf_layer_id))
-            current_floor_pose.pose.position.z += new_floor_height
+            current_floor_pose.pose.position.z += new_floor_height - old_p.pose.position.z
             q = 'belief_at_update(\'{}\', {})'.format(shelf_layer_id, self.pose_to_prolog(current_floor_pose))
             self.once(q)
 
