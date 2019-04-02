@@ -130,7 +130,7 @@ class Paths(object):
         cam_pose.pose.position.z = 0
         return cam_pose
 
-    def cam_pose_in_front_of_layer(self, shelf_layer_id, x=0., y=-0.6, x_limit=0.1, goal_angle=0.):
+    def cam_pose_in_front_of_layer(self, shelf_layer_id, x=0., y=-0.55, x_limit=0.1, goal_angle=0.):
         """
         computes a goal for base_link such that torso_Schwenker_Cams is at x/y in front of shelf_system_id
         :type shelf_system_id: str
@@ -239,7 +239,7 @@ class Paths(object):
         full_body_path.postures.append(full_body_pose)
 
         full_body_pose = FullBodyPosture()
-        full_body_pose.base_pos = self.cam_pose_in_front_of_shelf(shelf_system_id, x=shelf_system_width / 2)
+        full_body_pose.base_pos = self.cam_pose_in_front_of_shelf(shelf_system_id, x=shelf_system_width / 2, y=-0.45)
         full_body_pose.type = FullBodyPosture.CAM_FOOTPRINT
         full_body_path.postures.append(full_body_pose)
 
@@ -347,7 +347,7 @@ class Paths(object):
 
         # base_pose = self.cam_pose_in_front_of_facing(facing_id, x=0, x_limit=0, goal_angle=goal_angle)
         base_pose = self.cam_pose_in_front_of_layer(shelf_layer_id, x=facing_pose_on_layer.pose.position.x,
-                                                    y=-.6,
+                                                    y=-.55,
                                                     goal_angle=goal_angle)
 
         base_pose = transform_pose('map', base_pose)
