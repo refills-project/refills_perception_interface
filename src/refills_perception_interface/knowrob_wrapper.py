@@ -122,7 +122,7 @@ class KnowRob(object):
             prev_id = None
             for i, shelf_system_id in enumerate(self.left_right_dict):
                 if i > 0 and prev_id != self.left_right_dict[shelf_system_id]['starting-point']:
-                    raise TypeError('starting point doesn\'t match the prev entry at {}'.format(shelf_system_id))
+                    rospy.logwarn('starting point doesn\'t match the prev entry at {}'.format(shelf_system_id))
                 prev_id = shelf_system_id
                 via_points = self.left_right_dict[shelf_system_id]['via-points']
                 for i in range(len(via_points)):
@@ -224,6 +224,62 @@ class KnowRob(object):
         is_left = 1 if self.is_left(shelf_system_id) else -1
         facings = list(sorted(facings, key=lambda x: x[1].pose.position.x * is_left))
         return OrderedDict(facings)
+
+    def get_label_ids(self, layer_id):
+        """
+        Returns the KnowRob IDs of all labels on one shelf layer.
+        :param layer_id: KnowRob ID of the shelf for which the labels shall be retrieved.
+        :type layer_id: str
+        :return: KnowRob IDs of the labels on the shelf layer.
+        :rtype: list
+        """
+        q = 'findall([L, X], (rdf_has(\'{}\', knowrob:properPhysicalParts, L), rdfs_individual_of(L, dmshop:\'DMShelfLabel\'), belief_at_relative_to(L, \'{}\', [_,_,[X,_,_],_])), Ls).'.format(layer_id, layer_id)
+        solutions = self.all_solutions(q)[0]
+        sorted_solutions = list(sorted(solutions['Ls'], key=lambda x: x[1]))
+        return [solution[0] for solution in sorted_solutions]
+
+    def get_label_dan(self, label_id):
+        """
+        Returns the DAN of a label.
+        :param label_id: KnowRob ID of the label for which the DAN shall be retrieved.
+        :type label_id: str
+        :return: DAN of the label.
+        :rtype: str
+        """
+        q = 'rdf_has(\'{}\', shop:articleNumberOfLabel, _AN), rdf_has_prolog(_AN, shop:dan, DAN).'.format(label_id)
+        solution = self.once(q)
+        return solution['DAN'][1:-1]
+
+    def get_label_pos(self, label_id):
+        """
+        Returns the 1-D position of a label, relative to the left edge of its shelf layer.
+        :param label_id: KnowRob ID of the label for which to get the 1-D position.
+        :type label_id: str
+        :return: 1-D position of the label, relative to the left edge of its shelf layer (in m).
+        :rtype: float
+        """
+        q = 'rdf_has(_Layer, knowrob:properPhysicalParts, \'{}\'), rdfs_individual_of(_Layer, shop:\'ShelfLayer\'), belief_at_relative_to(\'{}\', _Layer, [_,_,[Pos,_,_],_]), object_dimensions(_Layer, _, Width, _).'.format(label_id, label_id)
+        solution = self.once(q)
+        return solution['Pos'] + solution['Width'] / 2.0
+
+
+    def read_labels(self):
+        """
+        Reads and returns all label information in the belief state.
+        :return: Read label information, ready for export.
+        :rtype: list
+        """
+        labels = []
+        for shelf_id in self.get_shelf_system_ids(filter_with_left_right_dict=False):
+            for layer_num, layer_id in enumerate(self.get_shelf_layer_from_system(shelf_id).keys()):
+                for label_num, label_id in enumerate(self.get_label_ids(layer_id)):
+                    labels.append({
+                        "label_num": label_num+1,
+                        "shelf_id": shelf_id,
+                        "layer_num": layer_num + 1,
+                        "dan": self.get_label_dan(label_id),
+                        "pos": self.get_label_pos(label_id)})
+        return labels
 
     def shelf_system_exists(self, shelf_system_id):
         """

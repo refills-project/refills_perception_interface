@@ -1,4 +1,6 @@
 import pytest
+from time import time
+
 import rospy
 from actionlib import SimpleActionClient
 from actionlib_msgs.msg import GoalStatus
@@ -58,7 +60,7 @@ def interface_no_move(setup):
     """
     setup.sleep = True
     setup.move = False
-    setup.reset()
+    # setup.reset()
     return setup
 
 
@@ -68,14 +70,14 @@ def interface(setup):
     :type setup: InterfaceWrapper
     :return:
     """
-    setup.reset()
+    # setup.reset()
     setup.giskard.drive_pose()
     return setup
 
 
 class InterfaceWrapper(object):
     def __init__(self, sim=False, move=True):
-        rospy.init_node('tests')
+        # rospy.init_node('tests')
         # rospy.set_param(DummyInterfaceNodeName + '/initial_beliefstate', 'package://refills_perception_interface/owl/muh.owl')
         # rospy.set_param(DummyInterfaceNodeName + '/initial_beliefstate',
         #                 'package://refills_rooming_in/data/augsburg_rooming_in_map_2018-11-08_10-17-17.owl')
@@ -519,6 +521,23 @@ class TestPerceptionInterface(object):
                     posture = interface.query_count_products_posture(facing_id)
                     interface.execute_full_body_posture(posture)
                     count = interface.count_products(facing_id)
+
+    def test_shop_scan_no_counting(self, interface):
+        """
+        :type interface: InterfaceWrapper
+        :return:
+        """
+        t = time()
+        shelf_ids = interface.query_shelf_systems()
+        for shelf_id in shelf_ids:
+            interface.giskard.drive_pose()
+            path = interface.query_detect_shelf_layers_path(shelf_id)
+            interface.detect_shelf_layers(shelf_id, path)
+            layers = interface.query_shelf_layers(shelf_id)
+            for layer_id in layers:
+                path = interface.query_detect_facings_path(layer_id)
+                interface.detect_facings(layer_id, path)
+        print('shit took {}'.format(time() - t))
 
     def test_shop_scan_without_path(self, interface_no_move):
         """
