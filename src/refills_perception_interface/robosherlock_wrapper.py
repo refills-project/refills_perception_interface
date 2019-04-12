@@ -41,6 +41,7 @@ class FakeRoboSherlock(object):
         """
         :type floor_id: str
         """
+        self.number_of_facings = max(4, int(np.random.normal(loc=7, scale=2)))
         self.current_shelf_layer_id = floor_id
 
     def stop_separator_detection(self, frame_id):
@@ -55,7 +56,9 @@ class FakeRoboSherlock(object):
             separator = PoseStamped()
             separator.header.frame_id = self.knowrob.get_perceived_frame_id(self.current_shelf_layer_id)
             x = (i / (self.number_of_facings)) * width
-            separator.pose.position = Point(x, 0.01*i, 0.01)
+            if x > 0.01 and x < 0.99:
+                x = max(0, min(width, x + np.random.normal(scale=0.02)))
+            separator.pose.position = Point(x, 0, 0)
             separator.pose.orientation.w = 1
             separator = transform_pose('map', separator)
             separators.append(separator)
@@ -81,15 +84,16 @@ class FakeRoboSherlock(object):
         """
         barcodes = {}
         width = self.knowrob.get_shelf_layer_width(self.current_shelf_layer_id)
-        for i in range(self.number_of_facings):
+        num_of_barcodes = max(1, self.number_of_facings - int(np.random.rand() * 3))
+        for i in range(num_of_barcodes):
             barcode = PoseStamped()
             barcode.header.frame_id = self.knowrob.get_perceived_frame_id(self.current_shelf_layer_id)
-            x = ((i + .5) / (self.number_of_facings))*width
+            x = max(0, min(width, ((i + .5) / (num_of_barcodes)) * width + np.random.normal(scale=.1/num_of_barcodes)))
             barcode.pose.position = Point(x, 0, 0)
             barcode.pose.orientation.w = 1
             barcode = transform_pose('map', barcode)
             try:
-                if np.random.choice([True, False]):
+                if np.random.choice([True]):
                     barcodes[str(self.barcodes.pop())] = barcode
                 else:
                     rnd_barcode = self.make_rnd_barcode()
@@ -105,7 +109,10 @@ class FakeRoboSherlock(object):
         :rtype: int
         """
         self.knowrob.assert_confidence(facing_id, 0.88)
-        return 1
+        i = int(np.random.random()*2)
+        if i > 0:
+            return 1
+        return 0
 
     def start_detect_shelf_layers(self, shelf_system_id):
         """
@@ -113,20 +120,25 @@ class FakeRoboSherlock(object):
         """
         pass
 
-    def stop_detect_shelf_layers(self, shelf_system_id):
+    def stop_detect_shelf_layers(self, shelf_system_id, max_height=1.1):
         """
         :return: list of shelf layer heights
         :rtype: list
         """
         # shelf_system_height = self.knowrob.get_shelf_system_height(shelf_system_id)
-        shelf_system_height = 1
-        detected_shelf_layers = (np.random.rand(2)*(shelf_system_height-0.2)+0.2).tolist()
-        return add_bottom_layer_if_not_present(detected_shelf_layers, shelf_system_id, self.knowrob)
+
+        num_of_layer = min(5, max(3, int(np.random.normal(loc=4, scale=0.5))))
+        heights = np.array([(x / num_of_layer) * max_height for x in range(num_of_layer)] + [max_height]) + 0.2
+        for i in range(len(heights)):
+            heights[i] += np.random.normal(scale=0.03)
+        heights[0] = min(0.2, heights[0])
+        # shelf_system_height = 1
+        detected_shelf_layers = heights
+        return add_bottom_layer_if_not_present(detected_shelf_layers.tolist(), shelf_system_id, self.knowrob)
 
 
 class RoboSherlock(FakeRoboSherlock):
     def __init__(self, knowrob):
-        super(RoboSherlock, self).__init__(knowrob)
         self.knowrob = knowrob  # type: KnowRob
         # TODO camera topics as ros param
         self.rgb_topic = rospy.get_param('~rgb_topic')
@@ -210,7 +222,7 @@ class RoboSherlock(FakeRoboSherlock):
         r = self.robosherlock_service.call(req)
         self.print_with_prefix('got: {}'.format(r))
 
-    def rs_pose_to_geom_msgs_pose(self,  pose):
+    def rs_pose_to_geom_msgs_pose(self, pose):
         p = PoseStamped()
         p.header.frame_id = pose['frame']
         p.header.stamp = rospy.Time(pose['timestamp'] / 1000000000)
@@ -222,7 +234,6 @@ class RoboSherlock(FakeRoboSherlock):
         p.pose.orientation.z = pose['rotation'][2]
         p.pose.orientation.w = pose['rotation'][3]
         return p
-
 
     def stop_detect_shelf_layers(self, shelf_system_id):
         """
@@ -244,7 +255,6 @@ class RoboSherlock(FakeRoboSherlock):
         for floor in result.answer:
             # pose = json.loads(floor)['rs.annotation.PoseAnnotation'][0]['camera']['rs.tf.StampedPose']
             # p = self.rs_pose_to_geom_msgs_pose(pose)
-
 
             p = message_converter.convert_dictionary_to_ros_message('geometry_msgs/PoseStamped',
                                                                     json.loads(floor)['poses'][0]['pose_stamped'])
@@ -280,8 +290,8 @@ class RoboSherlock(FakeRoboSherlock):
                 confidence = [x for x in result_dict if x['source'] == 'FacingDetection'][0]['confidence']
             except:
                 confidence = 0.01
-                result.answer = [0,0]
+                result.answer = [0, 0]
                 rospy.logerr(result.answer)
             self.knowrob.assert_confidence(facing_id, confidence)
-        count = max(0,len(result.answer) - 1)
+        count = max(0, len(result.answer) - 1)
         return count

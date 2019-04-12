@@ -10,7 +10,7 @@ from sensor_msgs.msg import LaserScan
 from std_msgs.msg import Header
 from tf.transformations import quaternion_about_axis
 
-from refills_perception_interface.tfwrapper import msg_to_kdl, kdl_to_posestamped, lookup_transform
+from refills_perception_interface.tfwrapper import msg_to_kdl, kdl_to_posestamped, lookup_transform, transform_pose
 
 
 class MoveBase(object):
@@ -60,9 +60,11 @@ class MoveBase(object):
                 self.knowrob.finish_action()
             return result
 
-    def move_camera(self, target_pose, retry=True):
+    def move_other_frame(self, target_pose, frame='camera_link', retry=True):
         if self.enabled:
-            target_pose = self.cam_pose_to_base_pose(target_pose)
+            target_pose = self.cam_pose_to_base_pose(target_pose, frame)
+            target_pose = transform_pose('map', target_pose)
+            target_pose.pose.position.z = 0
             self.goal_pub.publish(target_pose)
             goal = MoveBaseGoal()
             goal.target_pose = target_pose
@@ -87,22 +89,22 @@ class MoveBase(object):
                 self.knowrob.finish_action()
             return result
 
-    def cam_pose_to_base_pose(self, cam_pose):
+    def cam_pose_to_base_pose(self, pose, frame):
         """
-        :type cam_pose: PoseStamped
+        :type pose: PoseStamped
         :rtype: PoseStamped
         """
-        T_shelf___cam_joint_g = msg_to_kdl(cam_pose)
-        T_map___bfg = T_shelf___cam_joint_g * self.get_cam_in_base_footprint_kdl().Inverse()
-        base_pose = kdl_to_posestamped(T_map___bfg, cam_pose.header.frame_id)
+        T_shelf___cam_joint_g = msg_to_kdl(pose)
+        T_map___bfg = T_shelf___cam_joint_g * self.get_frame_in_base_footprint_kdl(frame).Inverse()
+        base_pose = kdl_to_posestamped(T_map___bfg, pose.header.frame_id)
         return base_pose
 
-    def get_cam_in_base_footprint_kdl(self):
+    def get_frame_in_base_footprint_kdl(self, frame):
         """
         :rtype: PyKDL.Frame
         """
         # if self.T_bf___cam_joint is None:
-        T_bf___cam_joint = msg_to_kdl(lookup_transform('base_footprint', 'camera_link'))
+        T_bf___cam_joint = msg_to_kdl(lookup_transform('base_footprint', frame))
         T_bf___cam_joint.p[2] = 0
         T_bf___cam_joint.M = PyKDL.Rotation()
         return T_bf___cam_joint

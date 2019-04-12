@@ -113,7 +113,7 @@ class InterfaceWrapper(object):
         # self.simple_base_goal_pub = rospy.Publisher('move_base_simple/goal', PoseStamped)
         self.simple_joint_goal = rospy.ServiceProxy('refills_bot/set_joint_states', SetJointState)
         self.sleep = sim
-        self.sleep_amount = 10
+        self.sleep_amount = 0
         self.move = move
         self.giskard = MoveArm(avoid_self_collisinon=True)
         self.base = MoveBase()
@@ -294,7 +294,7 @@ class InterfaceWrapper(object):
 
     def move_camera_footprint(self, goal_pose):
         if self.move:
-            self.base.move_camera(goal_pose)
+            self.base.move_other_frame(goal_pose)
 
     def move_base(self, goal_pose):
         if self.move:

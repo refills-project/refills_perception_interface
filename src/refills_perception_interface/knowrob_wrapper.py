@@ -207,6 +207,22 @@ class KnowRob(object):
         self.floors = OrderedDict(floors)
         return self.floors
 
+    def get_object_of_facing(self, facing_id):
+        q = 'shelf_facing_product_type(\'{}\', P)'.format(facing_id)
+        solutions = self.all_solutions(q)
+        if solutions:
+            return solutions[0]['P'].replace('\'','')
+
+    def get_object_dimensions(self, object_class):
+        q = 'owl_class_properties(\'{}\',knowrob:depthOfObject, literal(type(_,X))), atom_number(X,X_num),' \
+            'owl_class_properties(\'{}\',knowrob:widthOfObject, literal(type(_,Y))), atom_number(Y,Y_num),' \
+            'owl_class_properties(\'{}\',knowrob:heightOfObject, literal(type(_,Z))), atom_number(Z,Z_num).'.format(object_class,
+                                                                                                                    object_class,
+                                                                                                                    object_class)
+        solutions = self.once(q)
+        if solutions:
+            return [solutions['X_num'], solutions['Y_num'], solutions['Z_num']]
+
     def get_facing_ids_from_layer(self, shelf_layer_id):
         """
         :type shelf_layer_id: str
@@ -247,6 +263,20 @@ class KnowRob(object):
         """
         q = 'shelf_facing(L, \'{}\').'.format(facing_id)
         return len(self.all_solutions(q)) != 0
+
+    def get_facing_depth(self, facing_id):
+        q = 'comp_facingDepth(\'{}\', literal(type(_, W_XSD))),atom_number(W_XSD,W)'.format(facing_id)
+        solutions = self.once(q)
+        if solutions:
+            return solutions['W']
+        raise Exception('can\' compute facing depth')
+
+    def get_facing_height(self, facing_id):
+        q = 'comp_facingHeight(\'{}\', literal(type(_, W_XSD))),atom_number(W_XSD,W)'.format(facing_id)
+        solutions = self.once(q)
+        if solutions:
+            return solutions['W']
+        raise Exception('can\' compute facing depth')
 
     def belief_at_update(self, id, pose):
         """
@@ -473,6 +503,13 @@ class KnowRob(object):
         solution = self.once(q)
         height = solution['H']
         return height
+
+    def get_all_empty_facings(self):
+        q = 'findall(Facing, (entity(Facing, [a,location,[type,shop:product_facing]]),\+holds(shop:productInFacing(Facing,_))),Fs)'
+        solution = self.once(q)
+        if solution:
+            return solution['Fs']
+        return []
 
     def get_shelf_system_from_layer(self, shelf_layer_id):
         """
