@@ -8,7 +8,7 @@ import numpy as np
 
 from copy import deepcopy
 
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 from geometry_msgs.msg import Point, Vector3, PoseStamped, Quaternion
 from refills_msgs.msg import Barcode
 from rospy import ROSException
@@ -76,15 +76,16 @@ class BarcodeDetector(object):
         """
         Replaces the list of poses where a barcode was seen with its average
         """
-        barcodes = {}
-        for barcode, poses in self.barcodes.items():
-            positions = [[p.pose.position.x, p.pose.position.y, p.pose.position.z] for p in poses]
-            position = np.mean(positions, axis=0)
-            p = PoseStamped()
-            p.header.frame_id = 'map'
-            p.pose.position = Point(*position)
-            p.pose.orientation.w = 1
-            barcodes[barcode] = p
+        barcodes = OrderedDict()
+        for barcode, poses in sorted(self.barcodes.items(), key=lambda x: -len(x[1])):
+            if len(poses) > 5: # FIXME magic number to expose
+                positions = [[p.pose.position.x, p.pose.position.y, p.pose.position.z] for p in poses]
+                position = np.mean(positions, axis=0)
+                p = PoseStamped()
+                p.header.frame_id = 'map'
+                p.pose.position = Point(*position)
+                p.pose.orientation.w = 1
+                barcodes[barcode] = p
         return barcodes
 
     def cb(self, data):
@@ -96,9 +97,9 @@ class BarcodeDetector(object):
             p = transform_pose(MAP, data.barcode_pose)
             if p is not None:
                 p.header.stamp = rospy.Time()
-                # p = transform_pose(self.get_frame_id(), p)
                 if p is not None and self.barcode_on_shelf_layer(p):
-                    self.barcodes[data.barcode[1:-1]].append(p)
+                    if data.barcode[0] == '2':
+                        self.barcodes[data.barcode[1:-1]].append(p)
 
     def barcode_on_shelf_layer(self, separator_pose, width_threshold=0.0, height_threshold=0.08):
         """
@@ -138,3 +139,11 @@ class BarcodeDetector(object):
             ma.markers.append(m)
         if len(ma.markers) > 0:
             self.marker_pub.publish(ma)
+
+if __name__ == u'__main__':
+    rospy.init_node('asdf')
+    kr = KnowRob()
+    b = BarcodeDetector(kr)
+    # b.start_listening()
+    rospy.sleep(5)
+    b.cluster()
