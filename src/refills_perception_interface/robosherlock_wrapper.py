@@ -4,7 +4,7 @@ import json
 import numpy as np
 
 import rospy
-from geometry_msgs.msg import PoseStamped, Point
+from geometry_msgs.msg import PoseStamped, Point, Quaternion
 from iai_ringlight.srv import iai_ringlight_in, iai_ringlight_inRequest
 from robosherlock_msgs.srv import RSQueryService, RSQueryServiceRequest
 from rospy import ROSException
@@ -88,7 +88,8 @@ class FakeRoboSherlock(object):
         for i in range(num_of_barcodes):
             barcode = PoseStamped()
             barcode.header.frame_id = self.knowrob.get_perceived_frame_id(self.current_shelf_layer_id)
-            x = max(0, min(width, ((i + .5) / (num_of_barcodes)) * width + np.random.normal(scale=.1/num_of_barcodes)))
+            x = max(0,
+                    min(width, ((i + .5) / (num_of_barcodes)) * width + np.random.normal(scale=.1 / num_of_barcodes)))
             barcode.pose.position = Point(x, 0, 0)
             barcode.pose.orientation.w = 1
             barcode = transform_pose('map', barcode)
@@ -109,7 +110,7 @@ class FakeRoboSherlock(object):
         :rtype: int
         """
         self.knowrob.assert_confidence(facing_id, 0.88)
-        i = int(np.random.random()*2)
+        i = int(np.random.random() * 2)
         if i > 0:
             return 1
         return 0
@@ -138,17 +139,16 @@ class FakeRoboSherlock(object):
 
 
 class RoboSherlock(FakeRoboSherlock):
-    def __init__(self, knowrob):
+    def __init__(self, knowrob, name='RoboSherlock', check_camera=True):
+        self.check_camera = check_camera
         self.knowrob = knowrob  # type: KnowRob
         # TODO camera topics as ros param
-        self.rgb_topic = rospy.get_param('~rgb_topic')
         self.wait_for_rgb_camera()
-        self.depth_topic = rospy.get_param('~realsense_topic')
         self.wait_for_realsense()
         self.separator_detection = SeparatorClustering(knowrob)
         self.barcode_detection = BarcodeDetector(knowrob)
 
-        self.robosherlock_srv_name = rospy.get_param('~robosherlock_srv_name', '/RoboSherlock/query')
+        self.robosherlock_srv_name = rospy.get_param('~robosherlock_srv_name', '/{}/query'.format(name))
 
         self.ring_light_srv = rospy.ServiceProxy('iai_ringlight_controller', iai_ringlight_in)
 
@@ -174,26 +174,30 @@ class RoboSherlock(FakeRoboSherlock):
         except ROSException as e:
             self.error_with_prefix('robosherlock unavailable ({})'.format(self.robosherlock_srv_name))
             raise e
-        self.robosherlock_service = rospy.ServiceProxy('/RoboSherlock/query', RSQueryService)
+        self.robosherlock_service = rospy.ServiceProxy(self.robosherlock_srv_name, RSQueryService)
         self.print_with_prefix('connected to RoboSherlock')
 
     def wait_for_rgb_camera(self):
-        self.print_with_prefix('waiting for rgb camera')
-        try:
-            rospy.wait_for_message(self.rgb_topic, rospy.AnyMsg, timeout=5)
-        except ROSException as e:
-            self.error_with_prefix('rgb camera unavailable ({})'.format(self.rgb_topic))
-            raise e
-        self.print_with_prefix('rgb camera found')
+        if self.check_camera:
+            self.rgb_topic = rospy.get_param('~rgb_topic')
+            self.print_with_prefix('waiting for rgb camera')
+            try:
+                rospy.wait_for_message(self.rgb_topic, rospy.AnyMsg, timeout=5)
+            except ROSException as e:
+                self.error_with_prefix('rgb camera unavailable ({})'.format(self.rgb_topic))
+                raise e
+            self.print_with_prefix('rgb camera found')
 
     def wait_for_realsense(self):
-        self.print_with_prefix('waiting for realsense camera')
-        try:
-            rospy.wait_for_message(self.depth_topic, rospy.AnyMsg, timeout=5)
-        except ROSException as e:
-            self.error_with_prefix('depth camera unavailable ({})'.format(self.depth_topic))
-            raise e
-        self.print_with_prefix('realsense camera found')
+        if self.check_camera:
+            self.depth_topic = rospy.get_param('~realsense_topic')
+            self.print_with_prefix('waiting for realsense camera')
+            try:
+                rospy.wait_for_message(self.depth_topic, rospy.AnyMsg, timeout=5)
+            except ROSException as e:
+                self.error_with_prefix('depth camera unavailable ({})'.format(self.depth_topic))
+                raise e
+            self.print_with_prefix('realsense camera found')
 
     def start_separator_detection(self, floor_id):
         self.set_ring_light(True)
@@ -295,3 +299,49 @@ class RoboSherlock(FakeRoboSherlock):
             self.knowrob.assert_confidence(facing_id, confidence)
         count = max(0, len(result.answer) - 1)
         return count
+
+    def see(self, depth, width, height):
+        q = {'detect': {'pose': ''}}
+        self.print_with_prefix('sending: {}'.format(q))
+        req = RSQueryServiceRequest()
+        req.query = json.dumps(q)
+        rospy.sleep(0.4)
+        objects = []
+        expected_volume = self.volume(depth, width, height)
+        for i in range(5):
+            result = self.robosherlock_service.call(req)
+            answers = [json.loads(x) for x in result.answer]
+            real_object = min(answers, key=lambda x: abs(self.answer_volume(x) - expected_volume))
+            pose = message_converter.convert_dictionary_to_ros_message('geometry_msgs/PoseStamped',
+                                                                       real_object['poses'][0]['pose_stamped'])
+            objects.append(pose)
+        objects = self.filter_outlier(objects)
+        return self.avg_pose(objects)
+
+    def avg_pose(self, poses):
+        avg_position = np.array([np.array([p.pose.position.x,
+                                           p.pose.position.y,
+                                           p.pose.position.z]) for p in poses]).mean(axis=0)
+        avg_orientation = np.array([np.array([p.pose.orientation.x,
+                                              p.pose.orientation.y,
+                                              p.pose.orientation.z,
+                                              p.pose.orientation.w]) for p in poses]).mean(axis=0)
+        avg_orientation = avg_orientation / np.linalg.norm(avg_orientation)
+        avg = PoseStamped()
+        avg.header.frame_id = poses[0].header.frame_id
+        avg.pose.position = Point(*avg_position)
+        avg.pose.orientation = Quaternion(*avg_orientation)
+        return avg
+
+    def filter_outlier(self, objects, threshold=0.0007):
+        positions = np.array([np.array([p.pose.position.x, p.pose.position.y, p.pose.position.z]) for p in objects])
+        avg = positions.mean(axis=0)
+        return [x for i, x in enumerate(objects) if np.linalg.norm(positions[i] - avg) > threshold]
+
+    def answer_volume(self, answer):
+        return self.volume(answer['boundingbox']['dimensions-3D']['depth'],
+                           answer['boundingbox']['dimensions-3D']['width'],
+                           answer['boundingbox']['dimensions-3D']['height'])
+
+    def volume(self, depth, width, height):
+        return depth * width * height

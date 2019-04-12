@@ -70,7 +70,7 @@ def interface(setup):
     :type setup: InterfaceWrapper
     :return:
     """
-    # setup.reset()
+    setup.reset()
     setup.giskard.drive_pose()
     return setup
 

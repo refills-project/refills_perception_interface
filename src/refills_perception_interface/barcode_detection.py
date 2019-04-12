@@ -78,7 +78,7 @@ class BarcodeDetector(object):
         """
         barcodes = OrderedDict()
         for barcode, poses in sorted(self.barcodes.items(), key=lambda x: -len(x[1])):
-            if len(poses) > 5: # FIXME magic number to expose
+            if len(poses) > 3: # FIXME magic number to expose
                 positions = [[p.pose.position.x, p.pose.position.y, p.pose.position.z] for p in poses]
                 position = np.mean(positions, axis=0)
                 p = PoseStamped()

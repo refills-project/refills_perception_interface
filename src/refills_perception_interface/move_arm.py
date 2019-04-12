@@ -55,7 +55,7 @@ class MoveArm(object):
             self.giskard.allow_self_collision()
         else:
             self.giskard.set_self_collision_distance(self.self_collision_min_dist)
-            self.giskard.allow_collision(['ur5_wrist_3_link'],self.giskard.robot_name, ['ur5_forearm_link'])
+            self.giskard.allow_collision(['ur5_wrist_3_link'], self.giskard.robot_name, ['ur5_forearm_link'])
 
     def set_and_send_cartesian_goal(self, goal_pose):
         self.set_translation_goal(goal_pose)
@@ -149,6 +149,19 @@ class MoveArm(object):
             -0.85549,
             0.2181,
             -3.19172,
+        ]
+        return self.set_and_send_joint_goal(joint_state)
+
+    def see_pose(self):
+        joint_state = JointState()
+        joint_state.name = self.joint_names
+        joint_state.position = [
+            -1.57114202181,
+            -1.44927913347,
+            -1.25000602404,
+            -4.01274043718,
+            -1.56251222292,
+            1.62433183193,
         ]
         return self.set_and_send_joint_goal(joint_state)
 
