@@ -29,8 +29,8 @@ class SeparatorClustering(object):
         self.map_frame_id = 'map'
         self.separator_maker_color = ColorRGBA(.8, .8, .8, .8)
         self.separator_maker_scale = Vector3(.01, .5, .05)
-        self.min_samples = 2
-        self.max_dist = 0.015
+        self.min_samples = 4
+        self.max_dist = 0.02
         self.hanging = False
         self.listen = False
         self.separator_sub = rospy.Subscriber('separator_marker_detector_node/data_out', SeparatorArray,
@@ -101,7 +101,7 @@ class SeparatorClustering(object):
                 if p is not None and self.separator_on_shelf_layer(p):
                     self.detections.append([p.pose.position.x, p.pose.position.y, p.pose.position.z])
 
-    def separator_on_shelf_layer(self, separator_pose, width_threshold=0.03, height_threshold=0.06):
+    def separator_on_shelf_layer(self, separator_pose, width_threshold=0.035, height_threshold=0.06):
         """
         :param separator_pose: pose of separator in floor frame
         :type separator_pose: PoseStamped

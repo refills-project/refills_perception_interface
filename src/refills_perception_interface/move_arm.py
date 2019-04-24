@@ -156,12 +156,18 @@ class MoveArm(object):
         joint_state = JointState()
         joint_state.name = self.joint_names
         joint_state.position = [
-            -1.57114202181,
-            -1.44927913347,
-            -1.25000602404,
-            -4.01274043718,
-            -1.56251222292,
-            1.62433183193,
+            # -1.57114202181,
+            # -1.44927913347,
+            # -1.25000602404,
+            # -4.01274043718,
+            # -1.56251222292,
+            # 1.62433183193,
+            -np.pi/2,
+            -2.18,
+            1.47,
+            1.03,
+            np.pi/2,
+            np.pi/2,
         ]
         return self.set_and_send_joint_goal(joint_state)
 

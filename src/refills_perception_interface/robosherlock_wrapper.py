@@ -137,6 +137,15 @@ class FakeRoboSherlock(object):
         detected_shelf_layers = heights
         return add_bottom_layer_if_not_present(detected_shelf_layers.tolist(), shelf_system_id, self.knowrob)
 
+    def see(self, depth, width, height):
+        p = PoseStamped()
+        p.header.frame_id = 'map'
+        p.pose.position = Point(2.7, 1.9, 0.8)
+        p.pose.orientation.w = 1
+        return p
+
+    def set_ring_light(self, value=True):
+        pass
 
 class RoboSherlock(FakeRoboSherlock):
     def __init__(self, knowrob, name='RoboSherlock', check_camera=True):
@@ -308,15 +317,26 @@ class RoboSherlock(FakeRoboSherlock):
         rospy.sleep(0.4)
         objects = []
         expected_volume = self.volume(depth, width, height)
-        for i in range(5):
+        while len(objects) < 5:
             result = self.robosherlock_service.call(req)
             answers = [json.loads(x) for x in result.answer]
+            if not answers:
+                continue
             real_object = min(answers, key=lambda x: abs(self.answer_volume(x) - expected_volume))
-            pose = message_converter.convert_dictionary_to_ros_message('geometry_msgs/PoseStamped',
-                                                                       real_object['poses'][0]['pose_stamped'])
+            if abs(1-self.answer_front_area(real_object) / (width * height)) > 0.3:#175: # reject if more than x% diff
+                continue
+            try:
+                pose = message_converter.convert_dictionary_to_ros_message('geometry_msgs/PoseStamped',
+                                                                           real_object['poses'][0]['pose_stamped'])
+            except:
+                continue
+            pose.pose.position.z += real_object['boundingbox']['dimensions-3D']['height']/2.
             objects.append(pose)
+            self.print_with_prefix('found pose number {}'.format(len(objects)))
         objects = self.filter_outlier(objects)
-        return self.avg_pose(objects)
+        p = self.avg_pose(objects)
+        # p.pose.position.z += depth/2.
+        return transform_pose('map', p)
 
     def avg_pose(self, poses):
         avg_position = np.array([np.array([p.pose.position.x,
@@ -343,5 +363,10 @@ class RoboSherlock(FakeRoboSherlock):
                            answer['boundingbox']['dimensions-3D']['width'],
                            answer['boundingbox']['dimensions-3D']['height'])
 
+    def answer_front_area(self, answer):
+        return answer['boundingbox']['dimensions-3D']['depth'] * \
+               answer['boundingbox']['dimensions-3D']['width']
+
     def volume(self, depth, width, height):
         return depth * width * height
+

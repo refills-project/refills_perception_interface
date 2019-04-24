@@ -58,7 +58,7 @@ def add_edge_separators(separators):
     return sorted(separators)
 
 
-def merge_close_separators(separators, threshold=0.03):
+def merge_close_separators(separators, threshold=0.035):
     """
     Merges separators that are closer than threshold together
     :type separators: list

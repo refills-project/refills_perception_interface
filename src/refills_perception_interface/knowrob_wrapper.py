@@ -214,6 +214,10 @@ class KnowRob(object):
             return solutions[0]['P'].replace('\'','')
 
     def get_object_dimensions(self, object_class):
+        """
+        :param object_class:
+        :return: [x length/depth, y length/width, z length/height]
+        """
         q = 'owl_class_properties(\'{}\',knowrob:depthOfObject, literal(type(_,X))), atom_number(X,X_num),' \
             'owl_class_properties(\'{}\',knowrob:widthOfObject, literal(type(_,Y))), atom_number(Y,Y_num),' \
             'owl_class_properties(\'{}\',knowrob:heightOfObject, literal(type(_,Z))), atom_number(Z,Z_num).'.format(object_class,
@@ -221,7 +225,7 @@ class KnowRob(object):
                                                                                                                     object_class)
         solutions = self.once(q)
         if solutions:
-            return [solutions['X_num'], solutions['Y_num'], solutions['Z_num']]
+            return [solutions['Y_num'], solutions['X_num'], solutions['Z_num']]
 
     def get_facing_ids_from_layer(self, shelf_layer_id):
         """
@@ -325,14 +329,28 @@ class KnowRob(object):
         solutions = self.once(q)
         if solutions:
             return solutions['W']
-        raise Exception('can\' compute facing depth')
+        raise Exception('can\'t compute facing depth')
+
+    def get_facing_separator(self, facing_id):
+        q = 'rdf_has(\'{}\', shop:leftSeparator, L), rdf_has(\'{}\', shop:rightSeparator, R)'.format(facing_id,
+                                                                                                        facing_id)
+        solutions = self.once(q)
+        if solutions:
+            return solutions['L'].replace('\'', ''), solutions['R'].replace('\'', '')
 
     def get_facing_height(self, facing_id):
         q = 'comp_facingHeight(\'{}\', literal(type(_, W_XSD))),atom_number(W_XSD,W)'.format(facing_id)
         solutions = self.once(q)
         if solutions:
             return solutions['W']
-        raise Exception('can\' compute facing depth')
+        raise Exception('can\' compute facing height')
+
+    def get_facing_width(self, facing_id):
+        q = 'comp_facingWidth(\'{}\', literal(type(_, W_XSD))),atom_number(W_XSD,W)'.format(facing_id)
+        solutions = self.once(q)
+        if solutions:
+            return solutions['W']
+        raise Exception('can\' compute facing width')
 
     def belief_at_update(self, id, pose):
         """
@@ -562,6 +580,13 @@ class KnowRob(object):
 
     def get_all_empty_facings(self):
         q = 'findall(Facing, (entity(Facing, [a,location,[type,shop:product_facing]]),\+holds(shop:productInFacing(Facing,_))),Fs)'
+        solution = self.once(q)
+        if solution:
+            return solution['Fs']
+        return []
+
+    def get_empty_facings_from_layer(self, shelf_layer_id):
+        q = 'findall(F, (shelf_facing(\'{}\', F), \+holds(shop:productInFacing(F,_))),Fs)'.format(shelf_layer_id)
         solution = self.once(q)
         if solution:
             return solution['Fs']

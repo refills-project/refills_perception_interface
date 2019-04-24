@@ -6,7 +6,7 @@ class MoveGripper(object):
     def __init__(self):
         self.gripper_pub = rospy.Publisher('/wsg_50_driver/goal_position', PositionCmd, queue_size=10)
         self.status_sub = rospy.Subscriber('/wsg_50_driver/status', Status, self.status_cb, queue_size=10)
-        self.force = 55
+        self.force = 60
         self.speed = 50
         self.status = None # type: Status
 
@@ -14,10 +14,10 @@ class MoveGripper(object):
         self.status = data
 
     def release(self):
-        self.set_pose(self.get_gripper_pose() + .01)
+        self.set_pose(self.get_gripper_pose() + .02)
 
     def open(self):
-        self.set_pose(110)
+        self.set_pose(.110)
 
     def close_gripper(self):
         self.set_pose(0)
@@ -40,4 +40,5 @@ class MoveGripper(object):
                 raise RuntimeError('gripper didn\'t reach goal')
 
     def get_gripper_pose(self):
-        return rospy.wait_for_message('wsg_50/state', Status).width
+        return rospy.wait_for_message('wsg_50_driver/status'
+                                      '', Status).width / 1000.
