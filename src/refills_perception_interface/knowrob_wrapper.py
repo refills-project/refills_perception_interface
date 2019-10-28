@@ -19,8 +19,7 @@ from refills_perception_interface.not_hacks import add_separator_between_barcode
     merge_close_separators, merge_close_shelf_layers
 from refills_perception_interface.tfwrapper import transform_pose, lookup_pose, lookup_transform
 from refills_perception_interface.utils import print_with_prefix, ordered_load
-from json_prolog import json_prolog
-from json_prolog.json_prolog import PrologException
+from rosprolog_client.rosprolog_client import Prolog
 
 MAP = 'map'
 SHOP = 'shop'
@@ -60,7 +59,7 @@ class KnowRob(object):
         self.separators = {}
         self.perceived_frame_id_map = {}
         self.print_with_prefix('waiting for knowrob')
-        self.prolog = json_prolog.Prolog()
+        self.prolog = Prolog()
         self.print_with_prefix('knowrob showed up')
         self.query_lock = Lock()
         rospy.wait_for_service('/object_state_publisher/update_object_positions')
@@ -234,7 +233,7 @@ class KnowRob(object):
         :rtype: OrderedDict
         """
         shelf_system_id = self.get_shelf_system_from_layer(shelf_layer_id)
-        q = 'findall([F, P], (shelf_facing(\'{}\', F),belief_at(F, P)), Fs).'.format(shelf_layer_id)
+        q = 'findall([F, P], (shelf_facing(\'{}\', F),current_object_pose(F, P)), Fs).'.format(shelf_layer_id)
         solutions = self.all_solutions(q)[0]
         facings = []
         for facing_id, pose in solutions['Fs']:
@@ -434,7 +433,7 @@ class KnowRob(object):
                 layer_type = self.get_bottom_layer_type(shelf_system_id)
             else:
                 layer_type = self.get_shelf_layer_type(shelf_system_id)
-            q = 'belief_shelf_part_at(\'{}\', {}, {}, R)'.format(shelf_system_id, layer_type, height)
+            q = 'belief_shelf_part_at(\'{}\', \'{}\', {}, R)'.format(shelf_system_id, layer_type, height)
             self.once(q)
         return True
 
@@ -508,6 +507,8 @@ class KnowRob(object):
 
         q = 'bulk_insert_floor(\'{}\', separators({}), labels({}))'.format(shelf_layer_id, separators_xs, barcodes)
         self.once(q)
+        q = 'shelf_facings_mark_dirty(\'{}\')'.format(shelf_layer_id)
+        self.once(q)
 
     def assert_confidence(self, facing_id, confidence):
         q = 'rdf_assert(\'{}\', knowrob:confidence, literal(type(xsd:double, \'{}\')), belief_state).'.format(facing_id, confidence)
@@ -522,7 +523,7 @@ class KnowRob(object):
         :return: list of str
         :rtype: list
         """
-        q = 'findall(DAN,rdf_has_prolog(AN,shop:dan,DAN), DANS)'
+        q = 'findall(DAN, rdf_has(AN, shop:dan, literal(type(_, DAN))), DANS).'
         dans = self.once(q)['DANS']
         return dans
 
@@ -540,10 +541,11 @@ class KnowRob(object):
         """
         :type path: str
         """
-        if path is None:
-            path = '{}/data/beliefstate.owl'.format(RosPack().get_path('refills_first_review'))
-        q = 'belief_export(\'{}\')'.format(path)
-        self.once(q)
+        pass
+        # if path is None:
+        #     path = '{}/data/beliefstate.owl'.format(RosPack().get_path('refills_first_review'))
+        # q = 'mem_export(\'{}\')'.format(path)
+        # self.once(q)
 
     def get_shelf_layer_width(self, shelf_layer_id):
         """
@@ -599,7 +601,7 @@ class KnowRob(object):
         """
         if shelf_layer_id not in self.shelf_system_from_layer:
             q = 'shelf_layer_frame(\'{}\', Frame).'.format(shelf_layer_id)
-            shelf_system_id = self.once(q)['Frame'][1:-1]
+            shelf_system_id = self.once(q)['Frame']
             self.shelf_system_from_layer[shelf_layer_id] = shelf_system_id
         return self.shelf_system_from_layer[shelf_layer_id]
 
@@ -610,7 +612,7 @@ class KnowRob(object):
         """
         if facing_id not in self.shelf_layer_from_facing:
             q = 'shelf_facing(Layer, \'{}\').'.format(facing_id)
-            layer_id =  self.once(q)['Layer'][1:-1]
+            layer_id =  self.once(q)['Layer']
             self.shelf_layer_from_facing[facing_id] = layer_id
         return self.shelf_layer_from_facing[facing_id]
 
@@ -623,7 +625,7 @@ class KnowRob(object):
         q = 'shelf_layer_above(\'{}\', Above).'.format(shelf_layer_id)
         solution = self.once(q)
         if isinstance(solution, dict):
-            return solution['Above'][1:-1]
+            return solution['Above']
 
     def is_top_layer(self, shelf_layer_id):
         """
@@ -649,7 +651,7 @@ class KnowRob(object):
         #put path of owl here
         if initial_beliefstate is None:
             initial_beliefstate = self.initial_beliefstate
-        q = 'belief_forget, retractall(owl_parser:owl_file_loaded(\'{}\'))'.format(initial_beliefstate)
+        q = 'mem_drop, retractall(owl_parser:owl_file_loaded(\'{}\'))'.format(initial_beliefstate)
         result = self.once(q) != []
         self.reset_object_state_publisher.call(TriggerRequest())
         return result
@@ -675,7 +677,7 @@ class KnowRob(object):
         :type path: str
         :rtype: bool
         """
-        q = 'belief_parse(\'{}\')'.format(path)
+        q = 'mem_import(\'{}\')'.format(path)
         return self.once(q) != []
 
 

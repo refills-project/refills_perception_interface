@@ -76,7 +76,7 @@ def interface(setup):
 
 
 class InterfaceWrapper(object):
-    def __init__(self, sim=False, move=True):
+    def __init__(self, sim=True, move=True):
         # rospy.init_node('tests')
         # rospy.set_param(DummyInterfaceNodeName + '/initial_beliefstate', 'package://refills_perception_interface/owl/muh.owl')
         # rospy.set_param(DummyInterfaceNodeName + '/initial_beliefstate',
@@ -118,7 +118,7 @@ class InterfaceWrapper(object):
         self.sleep_amount = 0
         self.move = move
         self.giskard = MoveArm(avoid_self_collisinon=True)
-        self.base = MoveBase()
+        # self.base = MoveBase()
         rospy.sleep(.5)
 
     def reset(self):
@@ -296,11 +296,11 @@ class InterfaceWrapper(object):
 
     def move_camera_footprint(self, goal_pose):
         if self.move:
-            self.base.move_other_frame(goal_pose)
+            self.giskard.move_other_frame(goal_pose)
 
     def move_base(self, goal_pose):
         if self.move:
-            self.base.move_absolute(goal_pose)
+            self.giskard.move_absolute(goal_pose)
 
     def execute_full_body_posture(self, posture):
         """
@@ -359,7 +359,7 @@ class TestPerceptionInterface(object):
     def test_detect_shelf_layers(self, interface):
         shelf_systems = interface.query_shelf_systems()
         for shelf_system_id in shelf_systems:
-            interface.detect_shelf_layers(shelf_system_id)
+            interface.detect_shelf_layers(shelf_system_id, None)
             layers = interface.query_shelf_layers(shelf_system_id)
             assert len(layers) > 0
             assert layers == interface.query_shelf_layers(shelf_system_id)
@@ -391,7 +391,7 @@ class TestPerceptionInterface(object):
     def test_query_facing_empty(self, interface):
         shelf_system_ids = interface.query_shelf_systems()
         for shelf_system_id in shelf_system_ids:
-            shelf_layers = interface.detect_shelf_layers(shelf_system_id)
+            shelf_layers = interface.detect_shelf_layers(shelf_system_id, None)
             for layer_id in shelf_layers:
                 interface.query_facings(layer_id)
 
@@ -403,9 +403,9 @@ class TestPerceptionInterface(object):
     def test_detect_facings(self, interface):
         shelf_system_ids = interface.query_shelf_systems()
         for shelf_system_id in shelf_system_ids:
-            shelf_layers = interface.detect_shelf_layers(shelf_system_id)
+            shelf_layers = interface.detect_shelf_layers(shelf_system_id, None)
             for layer_id in shelf_layers:
-                facings = interface.detect_facings(layer_id)
+                facings = interface.detect_facings(layer_id, None)
                 facings2 = interface.query_facings(layer_id)
                 assert len(facings) > 0
                 assert facings == facings2
@@ -413,7 +413,7 @@ class TestPerceptionInterface(object):
     def test_cancel_detect_facings(self, interface):
         shelf_system_ids = interface.query_shelf_systems()
         for shelf_system_id in shelf_system_ids:
-            shelf_layers = interface.detect_shelf_layers(shelf_system_id)
+            shelf_layers = interface.detect_shelf_layers(shelf_system_id, None)
             for layer_id in shelf_layers:
                 interface.start_detect_facings(layer_id)
                 rospy.sleep(1)
@@ -430,9 +430,9 @@ class TestPerceptionInterface(object):
     def test_count_products(self, interface):
         shelf_system_ids = interface.query_shelf_systems()
         for shelf_system_id in shelf_system_ids:
-            shelf_layers = interface.detect_shelf_layers(shelf_system_id)
+            shelf_layers = interface.detect_shelf_layers(shelf_system_id, None)
             for layer_id in shelf_layers:
-                facings = interface.detect_facings(layer_id)
+                facings = interface.detect_facings(layer_id, None)
                 for facing_id in facings:
                     interface.count_products(facing_id)
 

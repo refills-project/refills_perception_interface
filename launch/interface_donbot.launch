@@ -1,6 +1,6 @@
 <launch>
-  <arg name="json_file" default="$(find refills_rooming_in)/data/donbot_bremen/1_shelf.json" />
-  <arg name="owl_file" default="$(find refills_rooming_in)/data/donbot_bremen/1_shelf_pp.owl" />
+  <arg name="json_file" default="$(find arrina_rooming_in)/data/donbot_bremen/1_shelf.json" />
+  <arg name="owl_file" default="$(find arrina_rooming_in)/data/donbot_bremen/1_shelf_pp.owl" />
   <arg name="ceiling_height" default="2" />
   <arg name="rgb_topic" default="/refills_wrist_camera/image_color" />
   <arg name="realsense_topic" default="/rs_camera/color/camera_info" />

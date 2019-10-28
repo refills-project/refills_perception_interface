@@ -1,3 +1,4 @@
+import PyKDL
 import numpy as np
 
 import rospy
@@ -6,6 +7,8 @@ from giskard_msgs.msg import MoveResult, CollisionEntry
 from sensor_msgs.msg import JointState
 
 from giskardpy.python_interface import GiskardWrapper
+from giskardpy.tfwrapper import transform_pose, lookup_transform
+from refills_perception_interface.tfwrapper import msg_to_kdl, kdl_to_posestamped
 
 
 class MoveArm(object):
@@ -39,7 +42,7 @@ class MoveArm(object):
             goal_pose.pose.position = translation.point
         else:
             goal_pose = translation
-        self.giskard.set_tranlation_goal(self.root, self.tip, goal_pose, self.trans_p_gain, self.trans_max_speed)
+        self.giskard.set_translation_goal(self.root, self.tip, goal_pose, self.trans_p_gain, self.trans_max_speed)
 
     def set_orientation_goal(self, orientation):
         goal_pose = PoseStamped()
@@ -55,7 +58,7 @@ class MoveArm(object):
             self.giskard.allow_self_collision()
         else:
             self.giskard.set_self_collision_distance(self.self_collision_min_dist)
-            self.giskard.allow_collision(['ur5_wrist_3_link'], self.giskard.robot_name, ['ur5_forearm_link'])
+            self.giskard.allow_collision(['ur5_wrist_3_link'], self.giskard.get_robot_name(), ['ur5_forearm_link'])
 
     def set_and_send_cartesian_goal(self, goal_pose):
         self.set_translation_goal(goal_pose)
@@ -73,6 +76,88 @@ class MoveArm(object):
             self.giskard.set_joint_goal(joint_state)
             self.set_default_self_collision_avoidance()
             return self.giskard.plan_and_execute().error_code == MoveResult.SUCCESS
+
+    def move_absolute(self, target_pose, retry=True):
+        if self.enabled:
+            self.giskard.set_cart_goal('odom', 'base_footprint', target_pose)
+            return self.giskard.plan_and_execute()
+            # self.goal_pub.publish(target_pose)
+            # goal = MoveBaseGoal()
+            # goal.target_pose = target_pose
+            # if self.knowrob is not None:
+            #     self.knowrob.start_base_movement(self.knowrob.pose_to_prolog(target_pose))
+            # while True:
+            #     self.client.send_goal(goal)
+            #     wait_result = self.client.wait_for_result(rospy.Duration(self.timeout))
+            #     result = self.client.get_result()
+            #     state = self.client.get_state()
+            #     if wait_result and state == GoalStatus.SUCCEEDED:
+            #         break
+            #     if retry:
+            #         cmd = raw_input('base movement did not finish in time, retry? [y/n]')
+            #         retry = cmd == 'y'
+            #     if not retry:
+            #         print('movement did not finish in time')
+            #         if self.knowrob is not None:
+            #             self.knowrob.finish_action()
+            #         raise TimeoutError()
+            # if self.knowrob is not None:
+            #     self.knowrob.finish_action()
+            # return result
+
+    def move_other_frame(self, target_pose, frame='camera_link', retry=True):
+        if self.enabled:
+            target_pose = self.cam_pose_to_base_pose(target_pose, frame)
+            target_pose = transform_pose('map', target_pose)
+            target_pose.pose.position.z = 0
+            self.giskard.set_cart_goal('odom', 'base_footprint', target_pose)
+            return self.giskard.plan_and_execute()
+
+            # self.goal_pub.publish(target_pose)
+            # goal = MoveBaseGoal()
+            # goal.target_pose = target_pose
+            # if self.knowrob is not None:
+            #     self.knowrob.start_base_movement(self.knowrob.pose_to_prolog(target_pose))
+            # while True:
+            #     self.client.send_goal(goal)
+            #     wait_result = self.client.wait_for_result(rospy.Duration(self.timeout))
+            #     result = self.client.get_result()
+            #     state = self.client.get_state()
+            #     if wait_result and state == GoalStatus.SUCCEEDED:
+            #         break
+            #     if retry:
+            #         cmd = raw_input('base movement did not finish in time, retry? [y/n]')
+            #         retry = cmd == 'y'
+            #     if not retry:
+            #         print('movement did not finish in time')
+            #         if self.knowrob is not None:
+            #             self.knowrob.finish_action()
+            #         raise TimeoutError()
+            # if self.knowrob is not None:
+            #     self.knowrob.finish_action()
+            # return result
+
+
+    def cam_pose_to_base_pose(self, pose, frame):
+        """
+        :type pose: PoseStamped
+        :rtype: PoseStamped
+        """
+        T_shelf___cam_joint_g = msg_to_kdl(pose)
+        T_map___bfg = T_shelf___cam_joint_g * self.get_frame_in_base_footprint_kdl(frame).Inverse()
+        base_pose = kdl_to_posestamped(T_map___bfg, pose.header.frame_id)
+        return base_pose
+
+
+    def get_frame_in_base_footprint_kdl(self, frame):
+        """
+        :rtype: PyKDL.Frame
+        """
+        # if self.T_bf___cam_joint is None:
+        T_bf___cam_joint = msg_to_kdl(lookup_transform('base_footprint', frame))
+        T_bf___cam_joint.p[2] = 0
+        T_bf___cam_joint.M = PyKDL.Rotation()
+        return T_bf___cam_joint
 
     def place_pose_left(self):
         joint_state = JointState()
