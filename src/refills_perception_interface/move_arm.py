@@ -189,7 +189,7 @@ class MoveArm(object):
         joint_state = JointState()
         joint_state.name = self.joint_names
         joint_state.position = [
-            -np.pi,
+            np.pi,
             -1.37,
             0.51,
             -0.72,
@@ -215,7 +215,7 @@ class MoveArm(object):
         joint_state = JointState()
         joint_state.name = self.joint_names
         joint_state.position = [
-            -np.pi / 2,
+            np.pi * 1.5,
             -np.pi / 2,
             -2.3,
             -np.pi / 2,

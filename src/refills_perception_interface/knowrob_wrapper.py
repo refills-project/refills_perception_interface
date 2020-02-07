@@ -192,14 +192,15 @@ class KnowRob(object):
         """
         q = 'rdf_has(\'{}\', knowrob:properPhysicalParts, Floor), ' \
             'rdfs_individual_of(Floor, {}), ' \
-            'object_perception_affordance_frame_name(Floor, Frame).'.format(shelf_system_id, SHELF_FLOOR)
+            'object_feature(Floor, Feature, dmshop:\'DMShelfPerceptionFeature\'),' \
+            'object_frame_name(Feature, FeatureFrame).'.format(shelf_system_id, SHELF_FLOOR)
 
         solutions = self.all_solutions(q)
         floors = []
         shelf_frame_id = self.get_perceived_frame_id(shelf_system_id)
         for solution in solutions:
             floor_id = solution['Floor'].replace('\'', '')
-            floor_pose = lookup_pose(shelf_frame_id, solution['Frame'].replace('\'', ''))
+            floor_pose = lookup_pose(shelf_frame_id, solution['FeatureFrame'].replace('\'', ''))
             floors.append((floor_id, floor_pose))
         floors = list(sorted(floors, key=lambda x: x[1].pose.position.z))
         floors = [x for x in floors if x[1].pose.position.z < MAX_SHELF_HEIGHT]
@@ -404,8 +405,9 @@ class KnowRob(object):
         :rtype: str
         """
         if object_id not in self.perceived_frame_id_map:
-            q = 'object_perception_affordance_frame_name(\'{}\', F)'.format(object_id)
-            self.perceived_frame_id_map[object_id] = self.once(q)['F'].replace('\'', '')
+            q = 'object_feature(\'{}\', Feature, dmshop:\'DMShelfPerceptionFeature\'),' \
+                'object_frame_name(Feature,FeatureFrame).'.format(object_id)
+            self.perceived_frame_id_map[object_id] = self.once(q)['FeatureFrame'].replace('\'', '')
         return self.perceived_frame_id_map[object_id]
 
     def get_object_frame_id(self, object_id):
@@ -507,6 +509,7 @@ class KnowRob(object):
 
         q = 'bulk_insert_floor(\'{}\', separators({}), labels({}))'.format(shelf_layer_id, separators_xs, barcodes)
         self.once(q)
+        rospy.sleep(5)
         q = 'shelf_facings_mark_dirty(\'{}\')'.format(shelf_layer_id)
         self.once(q)
 
@@ -541,11 +544,11 @@ class KnowRob(object):
         """
         :type path: str
         """
-        pass
-        # if path is None:
-        #     path = '{}/data/beliefstate.owl'.format(RosPack().get_path('refills_first_review'))
-        # q = 'mem_export(\'{}\')'.format(path)
-        # self.once(q)
+        # pass
+        if path is None:
+            path = '{}/data/beliefstate.owl'.format(RosPack().get_path('refills_second_review'))
+        q = 'mem_export(\'{}\')'.format(path)
+        self.once(q)
 
     def get_shelf_layer_width(self, shelf_layer_id):
         """
@@ -663,6 +666,7 @@ class KnowRob(object):
         return self.clear_beliefstate(inital_beliefstate) and self.load_initial_beliefstate()
 
     def load_initial_beliefstate(self):
+        self.start_episode()
         self.initial_beliefstate = rospy.get_param('~initial_beliefstate')
         if self.load_owl(self.initial_beliefstate):
             print_with_prefix('loaded initial beliefstate {}'.format(self.initial_beliefstate), self.prefix)
@@ -672,13 +676,28 @@ class KnowRob(object):
             print_with_prefix('error loading initial beliefstate {}'.format(self.initial_beliefstate), self.prefix)
             return False
 
+
     def load_owl(self, path):
         """
+        :param pafh: path to log folder
         :type path: str
         :rtype: bool
         """
         q = 'mem_import(\'{}\')'.format(path)
         return self.once(q) != []
+
+    def start_episode(self):
+        q = 'mem_episode_start(E).'
+        result = self.once(q)
+        self.episode_id = result['E']
+
+    def stop_episode(self):
+        #import os
+        #print(os.getcwd())
+        #os.system('mongodump --db roslog --out .')
+
+        q = 'mem_episode_stop(\'{}\').'.format(self.episode_id)
+        result = self.once(q)
 
 
 if __name__ == u'__main__':

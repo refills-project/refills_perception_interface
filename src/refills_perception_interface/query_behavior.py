@@ -78,8 +78,9 @@ class QueryBehavior(MyBahaviour):
         self.visualization_marker_pub.publish(m)
         rospy.sleep(.3)
         try:
-            now = datetime.datetime.now()
-            self.get_knowrob().save_beliefstate('/home/refills/rosout_logs/belief_state_{}-{}-{}-{}-{}-{}.owl'.format(now.year, now.month, now.day, now.hour, now.minute, now.second))
+            self.get_knowrob().stop_episode()
+            # now = datetime.datetime.now()
+            # self.get_knowrob().save_beliefstate('/home/arrina/rosout_logs/belief_state_{}-{}-{}-{}-{}-{}.owl'.format(now.year, now.month, now.day, now.hour, now.minute, now.second))
         except Exception as e:
             self.get_knowrob().print_with_prefix('failed to save beliefstate before reset')
         r.success = self.get_knowrob().reset_beliefstate()

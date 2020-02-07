@@ -190,7 +190,7 @@ class Paths(object):
         joint_state = JointState()
         joint_state.name = self.joint_names
         joint_state.position = [
-            -np.pi,
+            np.pi,
             -1.37,
             0.51,
             -0.72,

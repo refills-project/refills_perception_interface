@@ -48,7 +48,7 @@ def setup(request, ros):
     def reset_interface():
         i.reset()
 
-    # request.addfinalizer(reset_interface)
+    request.addfinalizer(reset_interface)
     return i
 
 
@@ -60,7 +60,7 @@ def interface_no_move(setup):
     """
     setup.sleep = True
     setup.move = False
-    # setup.reset()
+    setup.reset()
     return setup
 
 
@@ -364,6 +364,15 @@ class TestPerceptionInterface(object):
             assert len(layers) > 0
             assert layers == interface.query_shelf_layers(shelf_system_id)
             assert layers == interface.query_shelf_layers(shelf_system_id)
+
+    def test_detect_shelf_layers_without_move(self, interface_no_move):
+        shelf_systems = interface_no_move.query_shelf_systems()
+        for shelf_system_id in shelf_systems:
+            interface_no_move.detect_shelf_layers(shelf_system_id, None)
+            layers = interface_no_move.query_shelf_layers(shelf_system_id)
+            assert len(layers) > 0
+            assert layers == interface_no_move.query_shelf_layers(shelf_system_id)
+            assert layers == interface_no_move.query_shelf_layers(shelf_system_id)
 
     def test_cancel_detect_shelf_layers(self, interface):
         shelf_ids = interface.query_shelf_systems()
