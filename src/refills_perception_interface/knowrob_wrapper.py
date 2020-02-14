@@ -19,7 +19,7 @@ from refills_perception_interface.not_hacks import add_separator_between_barcode
     merge_close_separators, merge_close_shelf_layers
 from refills_perception_interface.tfwrapper import transform_pose, lookup_pose, lookup_transform
 from refills_perception_interface.utils import print_with_prefix, ordered_load
-from rosprolog_client.rosprolog_client import Prolog
+from rosprolog_client import Prolog
 
 MAP = 'map'
 SHOP = 'shop'
@@ -654,7 +654,7 @@ class KnowRob(object):
         #put path of owl here
         if initial_beliefstate is None:
             initial_beliefstate = self.initial_beliefstate
-        q = 'mem_drop, retractall(owl_parser:owl_file_loaded(\'{}\'))'.format(initial_beliefstate)
+        q = 'retractall(owl_parser:owl_file_loaded(\'{}/beliefstate.owl\'))'.format(initial_beliefstate)
         result = self.once(q) != []
         self.reset_object_state_publisher.call(TriggerRequest())
         return result
@@ -663,12 +663,12 @@ class KnowRob(object):
         """
         :rtype: bool
         """
-        return self.clear_beliefstate(inital_beliefstate) and self.load_initial_beliefstate()
+        return self.load_initial_beliefstate()
 
     def load_initial_beliefstate(self):
-        self.start_episode()
         self.initial_beliefstate = rospy.get_param('~initial_beliefstate')
-        if self.load_owl(self.initial_beliefstate):
+        self.clear_beliefstate(self.initial_beliefstate)
+        if self.start_episode(self.initial_beliefstate):
             print_with_prefix('loaded initial beliefstate {}'.format(self.initial_beliefstate), self.prefix)
             self.reset_object_state_publisher.call(TriggerRequest())
             return True
@@ -686,10 +686,16 @@ class KnowRob(object):
         q = 'mem_import(\'{}\')'.format(path)
         return self.once(q) != []
 
-    def start_episode(self):
-        q = 'mem_episode_start(E).'
-        result = self.once(q)
-        self.episode_id = result['E']
+    def start_episode(self, path_to_old_episode=None):
+        if path_to_old_episode is None:
+            q = 'mem_episode_start(E).'
+            result = self.once(q)
+            self.episode_id = result['E']
+        else:
+            q = 'mem_episode_start(E, [import:\'{}\']).'.format(path_to_old_episode)
+            result = self.once(q)
+            self.episode_id = result['E']
+        return result != []
 
     def stop_episode(self):
         #import os
@@ -697,8 +703,15 @@ class KnowRob(object):
         #os.system('mongodump --db roslog --out .')
 
         q = 'mem_episode_stop(\'{}\').'.format(self.episode_id)
-        result = self.once(q)
+        return self.once(q) != []
 
+    def start_tf_logging(self):
+        q = 'ros_logger_start([[\'tf\',[]]])'
+        self.once(q)
+
+    def stop_tf_logging(self):
+        q = 'ros_logger_stop.'
+        self.once(q)
 
 if __name__ == u'__main__':
     rospy.init_node('perception_interface')

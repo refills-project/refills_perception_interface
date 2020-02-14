@@ -78,7 +78,8 @@ class QueryBehavior(MyBahaviour):
         self.visualization_marker_pub.publish(m)
         rospy.sleep(.3)
         try:
-            self.get_knowrob().stop_episode()
+            if not self.get_knowrob().stop_episode():
+                rospy.logwarn('failed to stop episode')
             # now = datetime.datetime.now()
             # self.get_knowrob().save_beliefstate('/home/arrina/rosout_logs/belief_state_{}-{}-{}-{}-{}-{}.owl'.format(now.year, now.month, now.day, now.hour, now.minute, now.second))
         except Exception as e:
