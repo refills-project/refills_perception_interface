@@ -179,7 +179,7 @@ class RoboSherlock(FakeRoboSherlock):
     def wait_for_robosherlock(self):
         self.print_with_prefix('waiting for RoboSherlock')
         try:
-            rospy.wait_for_service(self.robosherlock_srv_name, timeout=5)
+            rospy.wait_for_service(self.robosherlock_srv_name, timeout=30)
         except ROSException as e:
             self.error_with_prefix('robosherlock unavailable ({})'.format(self.robosherlock_srv_name))
             raise e

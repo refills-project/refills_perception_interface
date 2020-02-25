@@ -434,7 +434,14 @@ class KnowRob(object):
             if i == 0:
                 layer_type = self.get_bottom_layer_type(shelf_system_id)
             else:
-                layer_type = self.get_shelf_layer_type(shelf_system_id)
+                if self.left_right_dict[shelf_system_id]['hack']:
+                    shelf_layer = self.get_shelf_layer_type(shelf_system_id)
+                    depth_id = shelf_layer.find('DMFloorT') + 8
+                    old_depth = int(shelf_layer[depth_id])
+                    new_depth = old_depth + 1
+                    layer_type = shelf_layer.replace('DMFloorT{}'.format(old_depth), 'DMFloorT{}'.format(new_depth))
+                else:
+                    layer_type = self.get_shelf_layer_type(shelf_system_id)
             q = 'belief_shelf_part_at(\'{}\', \'{}\', {}, R)'.format(shelf_system_id, layer_type, height)
             self.once(q)
         return True
@@ -687,6 +694,12 @@ class KnowRob(object):
         return self.once(q) != []
 
     def start_episode(self, path_to_old_episode=None):
+        q = 'knowrob_memory:current_episode(Y)'
+        result = self.once(q)
+        if result:
+            q = 'knowrob_memory:current_episode(E), mem_episode_stop(E)'
+            self.once(q)
+
         if path_to_old_episode is None:
             q = 'mem_episode_start(E).'
             result = self.once(q)
