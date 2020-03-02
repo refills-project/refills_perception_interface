@@ -41,7 +41,7 @@ class FakeRoboSherlock(object):
         """
         :type floor_id: str
         """
-        self.number_of_facings = max(4, int(np.random.normal(loc=7, scale=2)))
+        # self.number_of_facings = max(4, int(np.random.normal(loc=7, scale=2)))
         self.current_shelf_layer_id = floor_id
 
     def stop_separator_detection(self, frame_id):

@@ -19,7 +19,7 @@ from iai_naive_kinematics_sim.srv import SetJointState, SetJointStateRequest
 from sensor_msgs.msg import JointState
 from std_srvs.srv import Trigger, TriggerRequest
 
-from refills_perception_interface.move_arm import MoveArm
+from giskardpy.urdf_object import URDFObject
 from refills_perception_interface.move_base import MoveBase
 
 NUM_SHELVES = 4
@@ -117,7 +117,12 @@ class InterfaceWrapper(object):
         self.sleep = sim
         self.sleep_amount = 0
         self.move = move
-        self.giskard = MoveArm(avoid_self_collisinon=True)
+        if URDFObject(rospy.get_param('robot_description')).get_name() == 'iai_donbot':
+            from refills_perception_interface.move_arm import MoveArm
+            self.giskard = MoveArm(avoid_self_collisinon=True)
+        else:
+            from refills_perception_interface.move_arm_kmr_iiwa import MoveArm
+            self.giskard = MoveArm(avoid_self_collisinon=True)
         # self.base = MoveBase()
         rospy.sleep(.5)
 

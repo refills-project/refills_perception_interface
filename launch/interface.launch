@@ -5,6 +5,7 @@
   <arg name="initial_beliefstate_owl" default="" />
   <arg name="rgb_topic" default="/refills_wrist_camera/image_color" />
   <arg name="realsense_topic" default="/rs_camera/color/camera_info" />
+  <arg name="robot" default="donbot" />
 
 
   <node name="perception_interface" pkg="refills_perception_interface" type="perception_interface.py" output="screen">
@@ -14,6 +15,7 @@
     <param name="path_to_json" value="$(arg json_file)" />
     <param name="rgb_topic" value="$(arg rgb_topic)" />
     <param name="realsense_topic" value="$(arg realsense_topic)" />
+    <param name="robot" value="$(arg robot)" />
     <remap from="/separator_marker_detector_node/data_out" to="/separator_marker_detector_node/data_out"/>
     <remap from="/barcode/pose" to="/barcode/pose"/>
   </node>
