@@ -42,7 +42,6 @@ def grow_tree(debug=True):
     b.finished = False
     b.lock = TimeoutLock()
     b.knowrob = KnowRob()
-    b.robot = rospy.get_param('~robot')
     if roboserlock_sim:
         b.robosherlock = FakeRoboSherlock(b.knowrob)
     else:

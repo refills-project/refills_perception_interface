@@ -12,7 +12,7 @@ from std_srvs.srv import Trigger, TriggerResponse
 from visualization_msgs.msg import Marker
 
 from refills_perception_interface.MyBehavior import MyBahaviour
-from refills_perception_interface.paths import Paths, PathsKmrIiwa
+from refills_perception_interface.paths import Paths
 from refills_perception_interface.utils import print_with_prefix
 
 
@@ -27,10 +27,7 @@ class QueryBehavior(MyBahaviour):
         super(QueryBehavior, self).__init__(name)
 
     def setup(self, timeout):
-        if self.get_blackboard().robot == 'donbot':
-            self.paths = Paths(self.get_knowrob())
-        else:
-            self.paths = PathsKmrIiwa(self.get_knowrob())
+        self.paths = Paths(self.get_knowrob())
         self.query_shelf_systems_srv = rospy.Service('~query_shelf_systems', QueryShelfSystems,
                                                      self.query_shelf_systems_cb)
         self.query_shelf_layers_srv = rospy.Service('~query_shelf_layers', QueryShelfLayers, self.query_shelf_layers_cb)
