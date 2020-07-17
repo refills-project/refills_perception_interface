@@ -5,7 +5,6 @@ import numpy as np
 
 import rospy
 from geometry_msgs.msg import PoseStamped, Point, Quaternion
-from iai_ringlight.srv import iai_ringlight_in, iai_ringlight_inRequest
 from robosherlock_msgs.srv import RSQueryService, RSQueryServiceRequest
 from rospy import ROSException
 from rospy_message_converter import message_converter
@@ -158,12 +157,13 @@ class RoboSherlock(FakeRoboSherlock):
         self.barcode_detection = BarcodeDetector(knowrob)
 
         self.robosherlock_srv_name = rospy.get_param('~robosherlock_srv_name', '/{}/query'.format(name))
-
+        from iai_ringlight.srv import iai_ringlight_in
         self.ring_light_srv = rospy.ServiceProxy('iai_ringlight_controller', iai_ringlight_in)
 
         self.wait_for_robosherlock()
 
     def set_ring_light(self, value=True):
+        from iai_ringlight.srv import iai_ringlight_inRequest
         rospy.loginfo('calling ring light switch')
         if value:
             req = iai_ringlight_inRequest(a=9)
