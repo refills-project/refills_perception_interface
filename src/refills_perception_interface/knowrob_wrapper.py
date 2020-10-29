@@ -47,8 +47,8 @@ OBJECT_ACTED_ON = '\'http://knowrob.org/kb/knowrob.owl#objectActedOn\''
 GOAL_LOCATION = '\'http://knowrob.org/kb/knowrob.owl#goalLocation\''
 DETECTED_OBJECT = '\'http://knowrob.org/kb/knowrob.owl#detectedObject\''
 
-
 MAX_SHELF_HEIGHT = 1.1
+
 
 class KnowRob(object):
     prefix = 'knowrob_wrapper'
@@ -62,9 +62,9 @@ class KnowRob(object):
         self.prolog = Prolog()
         self.print_with_prefix('knowrob showed up')
         self.query_lock = Lock()
-        rospy.wait_for_service('/visualization_marker_array')
-        self.reset_object_state_publisher = rospy.ServiceProxy('/visualization_marker_array',
-                                                               Trigger)
+        # rospy.wait_for_message('/visualization_marker_array')
+        # self.reset_object_state_publisher = rospy.ServiceProxy('/visualization_marker_array',
+        #                                                        Trigger)
         self.shelf_layer_from_facing = {}
         self.shelf_system_from_layer = {}
 
@@ -93,24 +93,23 @@ class KnowRob(object):
         :rtype: str
         """
         if isinstance(pose_stamped, PoseStamped):
-            return '[_, [\'{}\',[{},{},{}], [{},{},{},{}]]]'.format(pose_stamped.header.frame_id,
-                                                                   pose_stamped.pose.position.x,
-                                                                   pose_stamped.pose.position.y,
-                                                                   pose_stamped.pose.position.z,
-                                                                   pose_stamped.pose.orientation.x,
-                                                                   pose_stamped.pose.orientation.y,
-                                                                   pose_stamped.pose.orientation.z,
-                                                                   pose_stamped.pose.orientation.w)
+            return '[\'{}\',[{},{},{}], [{},{},{},{}]]'.format(pose_stamped.header.frame_id,
+                                                               pose_stamped.pose.position.x,
+                                                               pose_stamped.pose.position.y,
+                                                               pose_stamped.pose.position.z,
+                                                               pose_stamped.pose.orientation.x,
+                                                               pose_stamped.pose.orientation.y,
+                                                               pose_stamped.pose.orientation.z,
+                                                               pose_stamped.pose.orientation.w)
         elif isinstance(pose_stamped, TransformStamped):
-            return '[_, [\'{}\', [{},{},{}], [{},{},{},{}]]]'.format(pose_stamped.header.frame_id,
-                                                                   pose_stamped.transform.translation.x,
-                                                                   pose_stamped.transform.translation.y,
-                                                                   pose_stamped.transform.translation.z,
-                                                                   pose_stamped.transform.rotation.x,
-                                                                   pose_stamped.transform.rotation.y,
-                                                                   pose_stamped.transform.rotation.z,
-                                                                   pose_stamped.transform.rotation.w)
-
+            return '[\'{}\', [{},{},{}], [{},{},{},{}]]'.format(pose_stamped.header.frame_id,
+                                                                pose_stamped.transform.translation.x,
+                                                                pose_stamped.transform.translation.y,
+                                                                pose_stamped.transform.translation.z,
+                                                                pose_stamped.transform.rotation.x,
+                                                                pose_stamped.transform.rotation.y,
+                                                                pose_stamped.transform.rotation.z,
+                                                                pose_stamped.transform.rotation.w)
 
     def prolog_to_pose_msg(self, query_result):
         """
@@ -222,7 +221,7 @@ class KnowRob(object):
         q = 'shelf_facing_product_type(\'{}\', P)'.format(facing_id)
         solutions = self.all_solutions(q)
         if solutions:
-            return solutions[0]['P'].replace('\'','')
+            return solutions[0]['P'].replace('\'', '')
 
     def get_object_dimensions(self, object_class):
         """
@@ -242,14 +241,16 @@ class KnowRob(object):
         rospy.loginfo("Asking: {}".format(q))
         bindings = self.once(q)
         rospy.loginfo("Received: {}".format(bindings))
-        rospy.sleep(3)
+        # rospy.sleep(3)
         # self.
-        q = "mark_dirty_objects(['{}', '{}'])".format(bindings['Left'], bindings['Right'])
+        # q = "show_marker(['{}', '{}'])".format(bindings['Left'], bindings['Right'])
+        q = "show_markers({})".format(rospy.get_rostime())
         self.once(q)
 
         # assert shelf individual
         # self.belief_at_update()
-        q = "belief_shelf_at('{}','{}',Shelf), belief_at_update(Shelf, {}).".format(
+        q = "belief_shelf_at('{}','{}',Shelf), " \
+            "tell(is_at(Shelf, {})).".format(
             bindings['Left'], bindings['Right'],
             self.pose_to_prolog(shelf_pose))
         rospy.loginfo("Asking: {}".format(q))
@@ -313,7 +314,6 @@ class KnowRob(object):
         solution = self.once(q)
         return solution['Pos'] + solution['Width'] / 2.0
 
-
     def read_labels(self):
         """
         Reads and returns all label information in the belief state.
@@ -325,7 +325,7 @@ class KnowRob(object):
             for layer_num, layer_id in enumerate(self.get_shelf_layer_from_system(shelf_id).keys()):
                 for label_num, label_id in enumerate(self.get_label_ids(layer_id)):
                     labels.append({
-                        "label_num": label_num+1,
+                        "label_num": label_num + 1,
                         "shelf_id": shelf_id,
                         "layer_num": layer_num + 1,
                         "dan": self.get_label_dan(label_id),
@@ -364,7 +364,7 @@ class KnowRob(object):
 
     def get_facing_separator(self, facing_id):
         q = 'triple(\'{}\', shop:leftSeparator, L), triple(\'{}\', shop:rightSeparator, R)'.format(facing_id,
-                                                                                                        facing_id)
+                                                                                                   facing_id)
         solutions = self.once(q)
         if solutions:
             return solutions['L'].replace('\'', ''), solutions['R'].replace('\'', '')
@@ -438,7 +438,7 @@ class KnowRob(object):
         if object_id not in self.perceived_frame_id_map:
             q = 'object_feature(\'{}\', Feature, dmshop:\'DMShelfPerceptionFeature\'),' \
                 'holds(Feature, knowrob:frameName, FeatureFrame).'.format(
-                    object_id)
+                object_id)
             self.perceived_frame_id_map[object_id] = self.once(q)['FeatureFrame'].replace('\'', '')
         return self.perceived_frame_id_map[object_id]
 
@@ -539,7 +539,7 @@ class KnowRob(object):
         barcodes = {code: do_transform_pose(p, t) for code, p in barcodes.items()}
         shelf_layer_width = self.get_shelf_layer_width(shelf_layer_id)
         separators_xs = [p.pose.position.x / shelf_layer_width for p in separators]
-        barcodes = [(p.pose.position.x/shelf_layer_width, barcode) for barcode, p in barcodes.items()]
+        barcodes = [(p.pose.position.x / shelf_layer_width, barcode) for barcode, p in barcodes.items()]
 
         # definitely no hacks here
         separators_xs, barcodes = add_separator_between_barcodes(separators_xs, barcodes)
@@ -583,11 +583,12 @@ class KnowRob(object):
         """
         :type path: str
         """
+        self.stop_episode(path)
         # pass
-        if path is None:
-            path = '{}/data/beliefstate.owl'.format(RosPack().get_path('refills_second_review'))
-        q = 'memorize(\'{}\')'.format(path)
-        self.once(q)
+        # if path is None:
+        #     path = '{}/data/beliefstate.owl'.format(RosPack().get_path('refills_second_review'))
+        # q = 'memorize(\'{}\')'.format(path)
+        # self.once(q)
 
     def get_shelf_layer_width(self, shelf_layer_id):
         """
@@ -654,7 +655,7 @@ class KnowRob(object):
         """
         if facing_id not in self.shelf_layer_from_facing:
             q = 'shelf_facing(Layer, \'{}\').'.format(facing_id)
-            layer_id =  self.once(q)['Layer']
+            layer_id = self.once(q)['Layer']
             self.shelf_layer_from_facing[facing_id] = layer_id
         return self.shelf_layer_from_facing[facing_id]
 
@@ -690,7 +691,7 @@ class KnowRob(object):
         """
         :rtype: bool
         """
-        #put path of owl here
+        # put path of owl here
         if initial_beliefstate is None:
             initial_beliefstate = self.initial_beliefstate
         # q = 'retractall(owl_parser:owl_file_loaded(\'{}/beliefstate.owl\'))'.format(initial_beliefstate)
@@ -707,17 +708,24 @@ class KnowRob(object):
         """
         return self.load_initial_beliefstate()
 
-    def load_initial_beliefstate(self):
-        self.initial_beliefstate = rospy.get_param('~initial_beliefstate')
-        self.clear_beliefstate(self.initial_beliefstate)
-        if self.start_episode(self.initial_beliefstate):
-            print_with_prefix('loaded initial beliefstate {}'.format(self.initial_beliefstate), self.prefix)
-            self.reset_object_state_publisher.call(TriggerRequest())
-            return True
+    def load_initial_beliefstate(self, path=None):
+        if path is None:
+            self.initial_beliefstate = rospy.get_param('~initial_beliefstate')
         else:
-            print_with_prefix('error loading initial beliefstate {}'.format(self.initial_beliefstate), self.prefix)
-            return False
-
+            self.initial_beliefstate = path
+        q = 'remember(\'{}\')'.format(self.initial_beliefstate)
+        result = self.once(q)
+        if result == []:
+            raise RuntimeError('failed to load {}'.format(self.initial_beliefstate))
+        return True
+        # self.clear_beliefstate(self.initial_beliefstate)
+        # if self.start_episode(self.initial_beliefstate):
+        #     print_with_prefix('loaded initial beliefstate {}'.format(self.initial_beliefstate), self.prefix)
+        #     self.reset_object_state_publisher.call(TriggerRequest())
+        #     return True
+        # else:
+        #     print_with_prefix('error loading initial beliefstate {}'.format(self.initial_beliefstate), self.prefix)
+        #     return False
 
     def load_owl(self, path):
         """
@@ -725,27 +733,52 @@ class KnowRob(object):
         :type path: str
         :rtype: bool
         """
-        q = 'tripledb_load(\'{}\')'.format(path+"/beliefstate.owl")
+        q = 'tripledb_load(\'{}\')'.format(path + "/beliefstate.owl")
         return self.once(q) != []
 
     def start_episode(self, path_to_old_episode=None):
-        q = 'knowrob_memory:current_episode(Y)'
+        q = 'findall(Coll, (mng_collection(roslog,Coll), \+ Coll=\'system.indexes\'), L), forall(member(C, L), mng_drop(roslog,C)),' \
+            'tripledb_init,'\
+            'tell([is_episode(Episode)]). '
+            # 'is_action(Action), ' \
+            # 'has_type(Task, soma:\'PhysicalTask\'),' \
+            # 'executes_task(Action,Task),' \
+            # 'is_setting_for(Episode,Action)]),' \
+            # 'notify_synchronize(event(Action)),' \
+            # '!.'
         result = self.once(q)
-        if result:
-            q = 'knowrob_memory:current_episode(E), mem_episode_stop(E)'
-            self.once(q)
+        if path_to_old_episode is not None:
+            q = 'remember({})'.format(path_to_old_episode)
+            result = self.once(q)
+            if result == []:
+                raise RuntimeError('failed to load {}'.format(path_to_old_episode))
+        # if result:
+        #     q = 'knowrob_memory:current_episode(E), mem_episode_stop(E)'
+        #     self.once(q)
 
-        if path_to_old_episode is None:
-            q = 'mem_episode_start(E).'
-            result = self.once(q)
-            self.episode_id = result['E']
-        else:
-            q = 'mem_episode_start(E, [import:\'{}\']).'.format(path_to_old_episode)
-            result = self.once(q)
-            self.episode_id = result['E']
+        # if path_to_old_episode is None:
+        #     q = 'mem_episode_start(E).'
+        #     result = self.once(q)
+        #     self.episode_id = result['E']
+        # else:
+        #     q = 'mem_episode_start(E, [import:\'{}\']).'.format(path_to_old_episode)
+        #     result = self.once(q)
+        #     self.episode_id = result['E']
         return result != []
 
-    # def stop_episode(self):
+    def stop_episode(self, path):
+        q = 'get_time(CurrentTime), ' \
+            'atom_concat(\'{}\',\'/\',X1), ' \
+            'atom_concat(X1,CurrentTime,X2), ' \
+            'memorize(X2),' \
+            'findall(Coll, (mng_collection(roslog,Coll), \+ Coll=\'system.indexes\'), L), forall(member(C, L), mng_drop(roslog,C)).'.format(path)
+        result = self.once(q)
+        if result == []:
+            raise RuntimeError('failed to store episode')
+        else:
+            rospy.loginfo('saved episode at {}'.format(path))
+            return True
+
     #     #import os
     #     #print(os.getcwd())
     #     #os.system('mongodump --db roslog --out .')
@@ -760,6 +793,7 @@ class KnowRob(object):
     def stop_tf_logging(self):
         q = 'ros_logger_stop.'
         self.once(q)
+
 
 if __name__ == u'__main__':
     rospy.init_node('perception_interface')
