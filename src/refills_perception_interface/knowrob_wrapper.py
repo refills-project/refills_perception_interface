@@ -7,7 +7,7 @@ from multiprocessing import Lock
 from rospkg import RosPack
 
 import rospy
-from geometry_msgs.msg import PoseStamped, Point, Quaternion
+from geometry_msgs.msg import PoseStamped, Point, Quaternion, TransformStamped
 import numpy as np
 from rospy_message_converter.message_converter import convert_dictionary_to_ros_message
 
@@ -62,9 +62,9 @@ class KnowRob(object):
         self.prolog = Prolog()
         self.print_with_prefix('knowrob showed up')
         self.query_lock = Lock()
-        rospy.wait_for_service('/object_state_publisher/update_object_positions')
-        self.reset_object_state_publisher = rospy.ServiceProxy('/object_state_publisher/update_object_positions',
-                                                               Trigger)
+        # rospy.wait_for_service('/object_state_publisher/update_object_positions')
+        # self.reset_object_state_publisher = rospy.ServiceProxy('/object_state_publisher/update_object_positions',
+        #                                                        Trigger)
         self.shelf_layer_from_facing = {}
         self.shelf_system_from_layer = {}
 
@@ -92,14 +92,25 @@ class KnowRob(object):
         :return: PoseStamped in a form the knowrob likes
         :rtype: str
         """
-        return '[\'{}\', _, [{},{},{}], [{},{},{},{}]]'.format(pose_stamped.header.frame_id,
-                                                               pose_stamped.pose.position.x,
-                                                               pose_stamped.pose.position.y,
-                                                               pose_stamped.pose.position.z,
-                                                               pose_stamped.pose.orientation.x,
-                                                               pose_stamped.pose.orientation.y,
-                                                               pose_stamped.pose.orientation.z,
-                                                               pose_stamped.pose.orientation.w)
+        if isinstance(pose_stamped, PoseStamped):
+            return '[\'{}\', _, [{},{},{}], [{},{},{},{}]]'.format(pose_stamped.header.frame_id,
+                                                                   pose_stamped.pose.position.x,
+                                                                   pose_stamped.pose.position.y,
+                                                                   pose_stamped.pose.position.z,
+                                                                   pose_stamped.pose.orientation.x,
+                                                                   pose_stamped.pose.orientation.y,
+                                                                   pose_stamped.pose.orientation.z,
+                                                                   pose_stamped.pose.orientation.w)
+        elif isinstance(pose_stamped, TransformStamped):
+            return '[\'{}\', _, [{},{},{}], [{},{},{},{}]]'.format(pose_stamped.header.frame_id,
+                                                                   pose_stamped.transform.translation.x,
+                                                                   pose_stamped.transform.translation.y,
+                                                                   pose_stamped.transform.translation.z,
+                                                                   pose_stamped.transform.rotation.x,
+                                                                   pose_stamped.transform.rotation.y,
+                                                                   pose_stamped.transform.rotation.z,
+                                                                   pose_stamped.transform.rotation.w)
+
 
     def prolog_to_pose_msg(self, query_result):
         """
@@ -226,6 +237,28 @@ class KnowRob(object):
         solutions = self.once(q)
         if solutions:
             return [solutions['Y_num'], solutions['X_num'], solutions['Z_num']]
+
+    def assert_shelf_markers(self, left_pose, right_pose, left_id, right_id, shelf_pose):
+        q = "belief_shelf_left_marker_at({}, '{}', Left)," \
+            "belief_shelf_right_marker_at({}, '{}', Right).".format(
+            self.pose_to_prolog(left_pose), left_id,
+            self.pose_to_prolog(right_pose), right_id)
+        rospy.loginfo("Asking: {}".format(q))
+        bindings = self.once(q)
+        rospy.loginfo("Received: {}".format(bindings))
+        rospy.sleep(3)
+        # self.
+        q = "mark_dirty_objects(['{}', '{}'])".format(bindings['Left'], bindings['Right'])
+        self.once(q)
+
+        # assert shelf individual
+        # self.belief_at_update()
+        q = "belief_shelf_at('{}','{}',Shelf), belief_at_update(Shelf, {}).".format(
+            bindings['Left'], bindings['Right'],
+            self.pose_to_prolog(shelf_pose))
+        rospy.loginfo("Asking: {}".format(q))
+        bindings = self.once(q)
+        rospy.loginfo("Received: {}".format(bindings))
 
     def get_facing_ids_from_layer(self, shelf_layer_id):
         """
