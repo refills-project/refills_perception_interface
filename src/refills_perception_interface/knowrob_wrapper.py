@@ -1,3 +1,4 @@
+import os
 import json
 import string
 import traceback
@@ -53,8 +54,10 @@ MAX_SHELF_HEIGHT = 1.1
 class KnowRob(object):
     prefix = 'knowrob_wrapper'
 
-    def __init__(self):
+    def __init__(self, initial_mongo_db=None):
         super(KnowRob, self).__init__()
+        if initial_mongo_db is not None:
+            self.restore_mongo(initial_mongo_db)
         self.read_left_right_json()
         self.separators = {}
         self.perceived_frame_id_map = {}
@@ -244,7 +247,8 @@ class KnowRob(object):
         # rospy.sleep(3)
         # self.
         # q = "show_marker(['{}', '{}'])".format(bindings['Left'], bindings['Right'])
-        q = "show_markers({})".format(rospy.get_rostime())
+        # q = "show_markers({})".format(rospy.get_rostime())
+        q = "marker_plugin:republish."
         self.once(q)
 
         # assert shelf individual
@@ -436,7 +440,7 @@ class KnowRob(object):
         :rtype: str
         """
         if object_id not in self.perceived_frame_id_map:
-            q = 'object_feature(\'{}\', Feature, dmshop:\'DMShelfPerceptionFeature\'),' \
+            q = 'object_feature_type(\'{}\', Feature, dmshop:\'DMShelfPerceptionFeature\'),' \
                 'holds(Feature, knowrob:frameName, FeatureFrame).'.format(
                 object_id)
             self.perceived_frame_id_map[object_id] = self.once(q)['FeatureFrame'].replace('\'', '')
@@ -687,37 +691,61 @@ class KnowRob(object):
         q = 'instance_of(\'{}\', {})'.format(shelf_layer_id, SHELF_BOTTOM_LAYER)
         return self.once(q) != []
 
-    def clear_beliefstate(self, initial_beliefstate=None):
-        """
-        :rtype: bool
-        """
-        # put path of owl here
-        if initial_beliefstate is None:
-            initial_beliefstate = self.initial_beliefstate
-        # q = 'retractall(owl_parser:owl_file_loaded(\'{}/beliefstate.owl\'))'.format(initial_beliefstate)
-        # Works only if the beliefstate.owl is loaded with namespace beliefstate
-        q = 'tripledb:tripledb_graph_drop(' + \
-            'beliefstate)'.format(initial_beliefstate)
-        result = self.once(q) != []
-        self.reset_object_state_publisher.call(TriggerRequest())
-        return result
+    # def clear_beliefstate(self, initial_beliefstate=None):
+    #     """
+    #     :rtype: bool
+    #     """
+    #     q = 'findall(Coll, (mng_collections(roslog,Coll), \+ Coll=\'system.indexes\'), L), forall(member(C, L), mng_drop(roslog,C)),' \
+    #         'tripledb_load(\'package://knowrob/owl/knowrob.owl\',[graph(tbox),namespace(knowrob)]),' \
+    #         'tripledb_init.'
+    #         # 'tell([is_episode(Episode)]). '
+    #     # 'is_action(Action), ' \
+    #     # 'has_type(Task, soma:\'PhysicalTask\'),' \
+    #     # 'executes_task(Action,Task),' \
+    #     # 'is_setting_for(Episode,Action)]),' \
+    #     # 'notify_synchronize(event(Action)),' \
+    #     # '!.'
+    #     result = self.once(q)
+    #     if initial_beliefstate is None:
+    #         initial_beliefstate = self.initial_beliefstate
+    #     if initial_beliefstate is not None:
+    #         q = 'remember({})'.format(initial_beliefstate)
+    #         result = self.once(q)
+    #         if result == []:
+    #             raise RuntimeError('failed to load {}'.format(initial_beliefstate))
 
-    def reset_beliefstate(self, inital_beliefstate=None):
-        """
-        :rtype: bool
-        """
-        return self.load_initial_beliefstate()
+        # # put path of owl here
+        # # q = 'retractall(owl_parser:owl_file_loaded(\'{}/beliefstate.owl\'))'.format(initial_beliefstate)
+        # # Works only if the beliefstate.owl is loaded with namespace beliefstate
+        # q = 'tripledb:tripledb_graph_drop(' + \
+        #     'beliefstate)'.format(initial_beliefstate)
+        # result = self.once(q) != []
+        # self.reset_object_state_publisher.call(TriggerRequest())
+        # return result
 
-    def load_initial_beliefstate(self, path=None):
+    # def reset_beliefstate(self, inital_beliefstate=None):
+    #     """
+    #     :rtype: bool
+    #     """
+    #     return self.load_initial_beliefstate()
+
+    def restore_mongo(self, path=None):
         if path is None:
             self.initial_beliefstate = rospy.get_param('~initial_beliefstate')
         else:
             self.initial_beliefstate = path
-        q = 'remember(\'{}\')'.format(self.initial_beliefstate)
-        result = self.once(q)
-        if result == []:
-            raise RuntimeError('failed to load {}'.format(self.initial_beliefstate))
-        return True
+        print('loading {} into mongo'.format(path))
+        cmd = 'mongorestore -d roslog {}'.format(path)
+        rospy.loginfo('executing: {}'.format(cmd))
+        os.system(cmd)
+
+
+
+        # q = 'remember(\'{}\')'.format(self.initial_beliefstate)
+        # result = self.once(q)
+        # if result == []:
+        #     raise RuntimeError('failed to load {}'.format(self.initial_beliefstate))
+        # return True
         # self.clear_beliefstate(self.initial_beliefstate)
         # if self.start_episode(self.initial_beliefstate):
         #     print_with_prefix('loaded initial beliefstate {}'.format(self.initial_beliefstate), self.prefix)
@@ -727,31 +755,25 @@ class KnowRob(object):
         #     print_with_prefix('error loading initial beliefstate {}'.format(self.initial_beliefstate), self.prefix)
         #     return False
 
-    def load_owl(self, path):
-        """
-        :param pafh: path to log folder
-        :type path: str
-        :rtype: bool
-        """
-        q = 'tripledb_load(\'{}\')'.format(path + "/beliefstate.owl")
-        return self.once(q) != []
+    # def load_owl(self, path):
+    #     """
+    #     :param pafh: path to log folder
+    #     :type path: str
+    #     :rtype: bool
+    #     """
+    #     q = 'tripledb_load(\'{}\')'.format(path + "/beliefstate.owl")
+    #     return self.once(q) != []
 
-    def start_episode(self, path_to_old_episode=None):
-        q = 'findall(Coll, (mng_collection(roslog,Coll), \+ Coll=\'system.indexes\'), L), forall(member(C, L), mng_drop(roslog,C)),' \
-            'tripledb_init,'\
-            'tell([is_episode(Episode)]). '
-            # 'is_action(Action), ' \
-            # 'has_type(Task, soma:\'PhysicalTask\'),' \
-            # 'executes_task(Action,Task),' \
-            # 'is_setting_for(Episode,Action)]),' \
-            # 'notify_synchronize(event(Action)),' \
-            # '!.'
-        result = self.once(q)
-        if path_to_old_episode is not None:
-            q = 'remember({})'.format(path_to_old_episode)
-            result = self.once(q)
-            if result == []:
-                raise RuntimeError('failed to load {}'.format(path_to_old_episode))
+    def start_episode(self):
+        raise NotImplementedError()
+    #     self.clear_beliefstate(path_to_old_episode)
+    #     q = 'tell([is_episode(Episode)]).'
+    #     result = self.once(q)
+        # if path_to_old_episode is not None:
+        #     q = 'remember({})'.format(path_to_old_episode)
+        #     result = self.once(q)
+        #     if result == []:
+        #         raise RuntimeError('failed to load {}'.format(path_to_old_episode))
         # if result:
         #     q = 'knowrob_memory:current_episode(E), mem_episode_stop(E)'
         #     self.once(q)
@@ -764,35 +786,38 @@ class KnowRob(object):
         #     q = 'mem_episode_start(E, [import:\'{}\']).'.format(path_to_old_episode)
         #     result = self.once(q)
         #     self.episode_id = result['E']
-        return result != []
+        # return result != []
 
-    def stop_episode(self, path):
-        q = 'get_time(CurrentTime), ' \
-            'atom_concat(\'{}\',\'/\',X1), ' \
-            'atom_concat(X1,CurrentTime,X2), ' \
-            'memorize(X2),' \
-            'findall(Coll, (mng_collection(roslog,Coll), \+ Coll=\'system.indexes\'), L), forall(member(C, L), mng_drop(roslog,C)).'.format(path)
-        result = self.once(q)
-        if result == []:
-            raise RuntimeError('failed to store episode')
-        else:
-            rospy.loginfo('saved episode at {}'.format(path))
-            return True
+    def stop_episode(self):
+        raise NotImplementedError()
 
-    #     #import os
-    #     #print(os.getcwd())
-    #     #os.system('mongodump --db roslog --out .')
+    def dump_mongo(self, path):
+        # q = ''
+        # q = 'get_time(CurrentTime), ' \
+        #     'atom_concat(\'{}\',\'/\',X1), ' \
+        #     'atom_concat(X1,CurrentTime,X2), ' \
+        #     'memorize(X2).'.format(path)
+        #     # 'findall(Coll, (mng_collection(roslog,Coll), \+ Coll=\'system.indexes\'), L), forall(member(C, L), mng_drop(roslog,C)).'.format(path)
+        # result = self.once(q)
+        # if result == []:
+        #     raise RuntimeError('failed to store episode')
+        # else:
+        #     rospy.loginfo('saved episode at {}'.format(path))
+        #     return True
 
-    #     q = 'mem_episode_stop(\'{}\').'.format(self.episode_id)
-    #     return self.once(q) != []
+        print(os.getcwd())
+        os.system('mongodump --db roslog --out {}'.format(path))
 
-    def start_tf_logging(self):
-        q = 'ros_logger_start([[\'tf\',[]]])'
-        self.once(q)
+        # q = 'mem_episode_stop(\'{}\').'.format(self.episode_id)
+        # return self.once(q) != []
 
-    def stop_tf_logging(self):
-        q = 'ros_logger_stop.'
-        self.once(q)
+    # def start_tf_logging(self):
+    #     q = 'ros_logger_start([[\'tf\',[]]])'
+    #     self.once(q)
+    #
+    # def stop_tf_logging(self):
+    #     q = 'ros_logger_stop.'
+    #     self.once(q)
 
 
 if __name__ == u'__main__':
