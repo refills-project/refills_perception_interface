@@ -42,7 +42,7 @@ class Paths(object):
         :type knowrob: KnowRob
         """
         self.knowrob = knowrob
-        self.ceiling_height = rospy.get_param('~ceiling_height')
+        self.ceiling_height = rospy.get_param('~ceiling_height', 3)
         self.joint_names = ['ur5_shoulder_pan_joint',
                             'ur5_shoulder_lift_joint',
                             'ur5_elbow_joint',
@@ -355,3 +355,102 @@ class Paths(object):
         full_body_pose.type = full_body_pose.BOTH
         full_body_pose.base_pos = base_pose
         return full_body_pose
+
+
+class PathsKmrIiwa(Paths):
+    def __init__(self, knowrob):
+        super(PathsKmrIiwa, self).__init__(knowrob)
+        self.joint_names = ['iiwa_joint_1',
+                            'iiwa_joint_2',
+                            'iiwa_joint_3',
+                            'iiwa_joint_4',
+                            'iiwa_joint_5',
+                            'iiwa_joint_6',
+                            'iiwa_joint_7']
+
+    # def is_right(self, shelf_system_id):
+    #     return super(PathsKmrIiwa, self).is_left(shelf_system_id)
+    #
+    # def is_left(self, shelf_system_id):
+    #     return super(PathsKmrIiwa, self).is_right(shelf_system_id)
+
+    def get_floor_detection_pose_right(self):
+        joint_state = JointState()
+        joint_state.name = self.joint_names
+        joint_state.position = [
+            0.05,
+            -0.48,
+            0.02,
+            -0.26,
+            -1.52,
+            1.76,
+            -0.99,
+        ]
+        return joint_state
+
+    def get_floor_detection_pose_left(self):
+        joint_state = JointState()
+        joint_state.name = self.joint_names
+        joint_state.position = [
+            -0.05,
+            -0.49,
+            -0.03,
+            -0.28,
+            -1.62,
+            -1.76,
+            0.97,
+        ]
+        return joint_state
+
+    def get_detect_shelf_layers_path(self, shelf_system_id):
+        """
+        :type shelf_system_id: str
+        :rtype: FullBodyPath
+        """
+        shelf_system_width = self.knowrob.get_shelf_layer_width(shelf_system_id)
+        # shelf_system_height = self.knowrob.get_shelf_system_height(shelf_system_id)
+        full_body_path = FullBodyPath()
+
+        # via points
+        for via_point in self.get_via_points(shelf_system_id):
+            full_body_pose = FullBodyPosture()
+            full_body_pose.base_pos = via_point
+            full_body_pose.type = FullBodyPosture.BASE
+            full_body_path.postures.append(full_body_pose)
+
+        # calculate base pose
+        base_pose = self.base_pose_in_front_of_shelf(shelf_system_id, shelf_system_width / 2, y=-0.85)
+        base_pose = transform_pose(self.knowrob.get_perceived_frame_id(shelf_system_id), base_pose)
+        if self.is_left(shelf_system_id):
+            base_pose.pose.position.x += 0.5
+        else:
+            base_pose.pose.position.x -= 0.5
+        base_pose = transform_pose('map', base_pose)
+
+        full_body_pose = FullBodyPosture()
+        full_body_pose.base_pos = base_pose
+        full_body_pose.type = FullBodyPosture.BASE
+        full_body_path.postures.append(full_body_pose)
+
+        full_body_pose = FullBodyPosture()
+        if self.is_left(shelf_system_id):
+            full_body_pose.goal_joint_state = self.get_floor_detection_pose_left()
+        else:
+            full_body_pose.goal_joint_state = self.get_floor_detection_pose_right()
+        full_body_pose.type = FullBodyPosture.JOINT
+        full_body_path.postures.append(full_body_pose)
+
+        full_body_pose = FullBodyPosture()
+        full_body_pose.base_pos = self.cam_pose_in_front_of_shelf(shelf_system_id, x=shelf_system_width / 2,
+                                                                  y=-0.55)
+        full_body_pose.type = FullBodyPosture.CAM_FOOTPRINT
+        full_body_path.postures.append(full_body_pose)
+
+        full_body_pose = FullBodyPosture()
+        full_body_pose.type = FullBodyPosture.CAMERA
+        full_body_pose.camera_pos.header.frame_id = 'camera_link'
+        full_body_pose.camera_pos.pose.position = Point(0, 1.45, 0)
+        full_body_pose.camera_pos.pose.orientation = Quaternion(0, 0, 0, 1)
+        full_body_path.postures.append(full_body_pose)
+
+        return full_body_path

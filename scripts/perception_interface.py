@@ -97,6 +97,7 @@ def grow_tree(debug=True):
 
 if __name__ == u'__main__':
     rospy.init_node('perception_interface')
+    rospy.sleep(5)
     debug = False
     if debug:
         tree_tick_rate = 2000

@@ -75,7 +75,10 @@ class KnowRob(object):
         print_with_prefix(msg, self.prefix)
 
     def once(self, q):
-        r = self.all_solutions(q)
+        try:
+            r = self.all_solutions(q)
+        except:
+            r = self.all_solutions(q)
         if len(r) == 0:
             return []
         return r[0]
@@ -740,6 +743,7 @@ class KnowRob(object):
         else:
             q = 'mem_episode_start(E, [import:\'{}\']).'.format(path_to_old_episode)
             result = self.once(q)
+
             self.episode_id = result['E']
         return result != []
 
