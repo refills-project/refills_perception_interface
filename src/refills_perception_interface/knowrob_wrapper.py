@@ -70,6 +70,7 @@ class KnowRob(object):
         #                                                        Trigger)
         self.shelf_layer_from_facing = {}
         self.shelf_system_from_layer = {}
+        self.republish_tf()
 
     def print_with_prefix(self, msg):
         """
@@ -197,6 +198,15 @@ class KnowRob(object):
         q = 'shelf_floor_type(\'{}\', LayerType).'.format(shelf_system_id)
         return self.once(q)['LayerType']
 
+    def rename_graph(self, old_name, new_name):
+        q = 'mng_update(roslog,triples,[graph,string({})],[\'$set\',[graph,string({})]])'.format(old_name,new_name)
+        self.once(q)
+        q = 'tripledb_add_subgraph({},common)'.format(new_name)
+        self.once(q)
+        q = 'tripledb_add_subgraph(user,{})'.format(new_name)
+        self.once(q)
+
+
     def get_shelf_layer_from_system(self, shelf_system_id):
         """
         :type shelf_system_id: str
@@ -241,9 +251,7 @@ class KnowRob(object):
             "belief_shelf_right_marker_at({}, '{}', Right).".format(
             self.pose_to_prolog(left_pose), left_id,
             self.pose_to_prolog(right_pose), right_id)
-        rospy.loginfo("Asking: {}".format(q))
         bindings = self.once(q)
-        rospy.loginfo("Received: {}".format(bindings))
         # rospy.sleep(3)
         # self.
         # q = "show_marker(['{}', '{}'])".format(bindings['Left'], bindings['Right'])
@@ -253,13 +261,19 @@ class KnowRob(object):
 
         # assert shelf individual
         # self.belief_at_update()
-        q = "belief_shelf_at('{}','{}',Shelf), " \
-            "tell(is_at(Shelf, {})).".format(
-            bindings['Left'], bindings['Right'],
-            self.pose_to_prolog(shelf_pose))
-        rospy.loginfo("Asking: {}".format(q))
+        q = "belief_shelf_at('{}','{}',Shelf)".format(bindings['Left'], bindings['Right'])
         bindings = self.once(q)
-        rospy.loginfo("Received: {}".format(bindings))
+        bindings = self.once(q) # why do i have to call this twice?
+        q = "tell(is_at(\'{}\', {})).".format(bindings['Shelf'], self.pose_to_prolog(shelf_pose))
+        bindings = self.once(q)
+
+    def republish_tf(self):
+        time = rospy.get_rostime()
+        for shelf_id in self.get_shelf_system_ids(False):
+            q = 'holds(\'{0}\', knowrob:frameName, Frame), ' \
+                'tf_mng_lookup(Frame, _, {1}.{2}, P, _,_), ' \
+                'tf_mem_set_pose(Frame, P, {1}.{2})'.format(shelf_id, time.secs, time.nsecs)
+            bindings = self.once(q)
 
     def get_facing_ids_from_layer(self, shelf_layer_id):
         """
