@@ -46,6 +46,7 @@ def grow_tree(debug=True):
         b.robosherlock = FakeRoboSherlock(b.knowrob)
     else:
         b.robosherlock = RoboSherlock(b.knowrob)
+    b.robot = rospy.get_param('~robot', 'donbot')
 
     finish_perception_srv = rospy.Service('~finish_perception', FinishPerception, finish_perception_cb)
     # ----------------------------------------------

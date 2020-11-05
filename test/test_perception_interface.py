@@ -19,7 +19,7 @@ from iai_naive_kinematics_sim.srv import SetJointState, SetJointStateRequest
 from sensor_msgs.msg import JointState
 from std_srvs.srv import Trigger, TriggerRequest
 
-from refills_perception_interface.move_arm import MoveArm
+from refills_perception_interface.move_arm_kmr_iiwa import MoveArm
 from refills_perception_interface.move_base import MoveBase
 
 NUM_SHELVES = 4

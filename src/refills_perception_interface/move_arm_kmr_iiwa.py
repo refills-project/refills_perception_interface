@@ -7,13 +7,15 @@ from giskard_msgs.msg import MoveResult, CollisionEntry
 from sensor_msgs.msg import JointState
 
 from giskardpy.python_interface import GiskardWrapper
+import giskardpy.tfwrapper as tf
 from giskardpy.tfwrapper import transform_pose, lookup_transform
 from refills_perception_interface.tfwrapper import msg_to_kdl, kdl_to_posestamped
 
 
 class MoveArm(object):
     def __init__(self, enabled=True, knowrob=None, avoid_self_collisinon=True, tip='camera_link',
-                 root='ur5_shoulder_link'):
+                 root='iiwa_link_0'):
+        tf.init()
         self.move_time_limit = 25
         self.enabled = enabled
         self.knowrob = knowrob
@@ -24,16 +26,18 @@ class MoveArm(object):
         self.rot_p_gain = 0.5
         self.trans_max_speed = 0.1
         self.rot_max_speed = 0.3
-        self.self_collision_min_dist = 0.03
+        self.base_link = 'base_link'
+        # self.self_collision_min_dist = 0.03
         self.avoid_self_collision = avoid_self_collisinon
 
         # TODO get this from param server of topic
-        self.joint_names = ['ur5_shoulder_pan_joint',
-                            'ur5_shoulder_lift_joint',
-                            'ur5_elbow_joint',
-                            'ur5_wrist_1_joint',
-                            'ur5_wrist_2_joint',
-                            'ur5_wrist_3_joint', ]
+        self.joint_names = ['iiwa_joint_1',
+                            'iiwa_joint_2',
+                            'iiwa_joint_3',
+                            'iiwa_joint_4',
+                            'iiwa_joint_5',
+                            'iiwa_joint_6',
+                            'iiwa_joint_7']
 
     def set_translation_goal(self, translation):
         goal_pose = PoseStamped()
@@ -57,29 +61,29 @@ class MoveArm(object):
         if not self.avoid_self_collision:
             self.giskard.allow_self_collision()
         # else:
-        #     self.giskard.set_self_collision_distance(self.self_collision_min_dist)
-        #     self.giskard.allow_collision(['ur5_wrist_3_link'], self.giskard.get_robot_name(), ['ur5_forearm_link'])
+            # self.giskard.set_self_collision_distance(self.self_collision_min_dist)
+            # self.giskard.allow_collision(['ur5_wrist_3_link'], self.giskard.get_robot_name(), ['ur5_forearm_link'])
 
     def set_and_send_cartesian_goal(self, goal_pose):
-        self.set_translation_goal(goal_pose)
-        self.set_orientation_goal(goal_pose)
-        self.set_default_self_collision_avoidance()
-        return self.giskard.plan_and_execute().error_code == MoveResult.SUCCESS
+        self.giskard.set_cart_goal(self.root, self.tip, goal_pose)
+        # self.set_orientation_goal(goal_pose)
+        # self.set_default_self_collision_avoidance()
+        return self.giskard.plan_and_execute().error_codes[0] == MoveResult.SUCCESS
 
     def send_cartesian_goal(self):
         if self.enabled:
             self.set_default_self_collision_avoidance()
-            return self.giskard.plan_and_execute().error_code == MoveResult.SUCCESS
+            return self.giskard.plan_and_execute().error_codes[0] == MoveResult.SUCCESS
 
     def set_and_send_joint_goal(self, joint_state):
         if self.enabled:
             self.giskard.set_joint_goal(joint_state)
             self.set_default_self_collision_avoidance()
-            return self.giskard.plan_and_execute().error_code == MoveResult.SUCCESS
+            return self.giskard.plan_and_execute().error_codes[0] == MoveResult.SUCCESS
 
     def move_absolute(self, target_pose, retry=True):
         if self.enabled:
-            self.giskard.set_cart_goal('odom', 'base_footprint', target_pose)
+            self.giskard.set_cart_goal('odom', self.base_link, target_pose)
             return self.giskard.plan_and_execute()
             # self.goal_pub.publish(target_pose)
             # goal = MoveBaseGoal()
@@ -110,7 +114,7 @@ class MoveArm(object):
             target_pose = self.cam_pose_to_base_pose(target_pose, frame)
             target_pose = transform_pose('map', target_pose)
             target_pose.pose.position.z = 0
-            self.giskard.set_cart_goal('odom', 'base_footprint', target_pose)
+            self.giskard.set_cart_goal('odom', self.base_link, target_pose)
             return self.giskard.plan_and_execute()
 
             # self.goal_pub.publish(target_pose)
@@ -154,7 +158,7 @@ class MoveArm(object):
         :rtype: PyKDL.Frame
         """
         # if self.T_bf___cam_joint is None:
-        T_bf___cam_joint = msg_to_kdl(lookup_transform('base_footprint', frame))
+        T_bf___cam_joint = msg_to_kdl(lookup_transform(self.base_link, frame))
         T_bf___cam_joint.p[2] = 0
         T_bf___cam_joint.M = PyKDL.Rotation()
         return T_bf___cam_joint
@@ -215,12 +219,7 @@ class MoveArm(object):
         joint_state = JointState()
         joint_state.name = self.joint_names
         joint_state.position = [
-            np.pi * 1.5,
-            -np.pi / 2,
-            -2.3,
-            -np.pi / 2,
-            0,
-            -np.pi / 2,
+            0,0,0,0,0,0,0
         ]
         return self.set_and_send_joint_goal(joint_state)
 
