@@ -8,6 +8,7 @@ from multiprocessing import Lock
 from rospkg import RosPack
 
 import rospy
+import rosservice
 from geometry_msgs.msg import PoseStamped, Point, Quaternion, TransformStamped
 import numpy as np
 from rospy_message_converter.message_converter import convert_dictionary_to_ros_message
@@ -54,10 +55,18 @@ MAX_SHELF_HEIGHT = 1.1
 class KnowRob(object):
     prefix = 'knowrob_wrapper'
 
-    def __init__(self, initial_mongo_db=None):
+    def __init__(self, initial_mongo_db=None, clear_roslog=True):
         super(KnowRob, self).__init__()
+        if clear_roslog or initial_mongo_db is not None:
+            if '/rosprolog/query' in rosservice.get_service_list():
+                self.print_with_prefix('kill knowrob so mongo can be initialized!')
+            while '/rosprolog/query' in rosservice.get_service_list():
+                rospy.sleep(0.5)
+            if clear_roslog:
+                self.mongo_drop_database('roslog')
         if initial_mongo_db is not None:
-            self.restore_mongo(initial_mongo_db)
+            self.mongo_load_database(initial_mongo_db)
+            self.print_with_prefix('restored mongo, start knowrob')
         self.read_left_right_json()
         self.separators = {}
         self.perceived_frame_id_map = {}
@@ -70,7 +79,8 @@ class KnowRob(object):
         #                                                        Trigger)
         self.shelf_layer_from_facing = {}
         self.shelf_system_from_layer = {}
-        self.republish_tf()
+        if initial_mongo_db is not None:
+            self.republish_tf()
 
     def print_with_prefix(self, msg):
         """
@@ -143,6 +153,10 @@ class KnowRob(object):
         except Exception as e:
             rospy.logwarn(e)
             rospy.logwarn('failed to load left right json')
+
+    def delete_graph(self, name):
+        q = 'tripledb:tripledb_graph_drop(\'{}\')'.format(name)
+        return self.once(q) != []
 
     def is_left(self, shelf_system_id):
         return self.left_right_dict[shelf_system_id]['side'] == 'left'
@@ -743,7 +757,7 @@ class KnowRob(object):
     #     """
     #     return self.load_initial_beliefstate()
 
-    def restore_mongo(self, path=None):
+    def mongo_load_database(self, path=None):
         if path is None:
             self.initial_beliefstate = rospy.get_param('~initial_beliefstate')
         else:
@@ -805,7 +819,10 @@ class KnowRob(object):
     def stop_episode(self):
         raise NotImplementedError()
 
-    def dump_mongo(self, path):
+    def mongo_drop_database(self, name):
+        os.system('mongo {} --eval "db.dropDatabase()"'.format(name))
+
+    def mongo_dump_database(self, path):
         # q = ''
         # q = 'get_time(CurrentTime), ' \
         #     'atom_concat(\'{}\',\'/\',X1), ' \
@@ -819,7 +836,7 @@ class KnowRob(object):
         #     rospy.loginfo('saved episode at {}'.format(path))
         #     return True
 
-        print(os.getcwd())
+        # print(os.getcwd())
         os.system('mongodump --db roslog --out {}'.format(path))
 
         # q = 'mem_episode_stop(\'{}\').'.format(self.episode_id)
