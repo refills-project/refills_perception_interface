@@ -58,10 +58,10 @@ class KnowRob(object):
     def __init__(self, initial_mongo_db=None, clear_roslog=True):
         super(KnowRob, self).__init__()
         if clear_roslog or initial_mongo_db is not None:
-            if '/rosprolog/query' in rosservice.get_service_list():
-                self.print_with_prefix('kill knowrob so mongo can be initialized!')
-            while '/rosprolog/query' in rosservice.get_service_list():
-                rospy.sleep(0.5)
+            # if '/rosprolog/query' in rosservice.get_service_list():
+            #     self.print_with_prefix('kill knowrob so mongo can be initialized!')
+            # while '/rosprolog/query' in rosservice.get_service_list():
+            #     rospy.sleep(0.5)
             if clear_roslog:
                 self.mongo_drop_database('roslog')
         if initial_mongo_db is not None:
@@ -277,17 +277,22 @@ class KnowRob(object):
         # self.belief_at_update()
         q = "belief_shelf_at('{}','{}',Shelf)".format(bindings['Left'], bindings['Right'])
         bindings = self.once(q)
-        bindings = self.once(q) # why do i have to call this twice?
+        # bindings = self.once(q) # why do i have to call this twice?
         q = "tell(is_at(\'{}\', {})).".format(bindings['Shelf'], self.pose_to_prolog(shelf_pose))
         bindings = self.once(q)
 
     def republish_tf(self):
         time = rospy.get_rostime()
-        for shelf_id in self.get_shelf_system_ids(False):
-            q = 'holds(\'{0}\', knowrob:frameName, Frame), ' \
-                'tf_mng_lookup(Frame, _, {1}.{2}, P, _,_), ' \
-                'tf_mem_set_pose(Frame, P, {1}.{2})'.format(shelf_id, time.secs, time.nsecs)
-            bindings = self.once(q)
+        q = 'holds(X, knowrob:frameName, Frame), has_type(X, O), transitive(subclass_of(O, dul:\'Object\')).'
+        bindings = self.all_solutions(q)
+        frame_names = []
+        for binding in bindings:
+            frame_names.append(str(binding['Frame']))
+        np.unique(frame_names).tolist()
+        q = 'forall( member(Frame, {0}), ' \
+                '(tf_mng_lookup(Frame, _, {1}.{2}, P, _,_), ' \
+                'tf_mem_set_pose(Frame, P, {1}.{2}),!)).'.format(frame_names, time.secs, time.nsecs)
+        bindings = self.once(q)
 
     def get_facing_ids_from_layer(self, shelf_layer_id):
         """
