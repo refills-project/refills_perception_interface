@@ -49,7 +49,6 @@ class QueryBehavior(MyBahaviour):
 
         # self.initial_beliefstate = rospy.get_param('~initial_beliefstate')
 
-        self.get_knowrob().load_initial_beliefstate()
         return super(QueryBehavior, self).setup(timeout)
 
     def initialise(self):
@@ -76,18 +75,19 @@ class QueryBehavior(MyBahaviour):
         """
         # self.initial_beliefstate = rospy.get_param('~initial_beliefstate')
         r = TriggerResponse()
-        m = Marker()
-        m.action = Marker.DELETEALL
-        self.visualization_marker_pub.publish(m)
-        rospy.sleep(.3)
-        try:
-            if not self.get_knowrob().stop_episode():
-                rospy.logwarn('failed to stop episode')
-            # now = datetime.datetime.now()
-            # self.get_knowrob().save_beliefstate('/home/arrina/rosout_logs/belief_state_{}-{}-{}-{}-{}-{}.owl'.format(now.year, now.month, now.day, now.hour, now.minute, now.second))
-        except Exception as e:
-            self.get_knowrob().print_with_prefix('failed to save beliefstate before reset')
-        r.success = self.get_knowrob().reset_beliefstate()
+        # m = Marker()
+        # m.action = Marker.DELETEALL
+        # self.visualization_marker_pub.publish(m)
+        # rospy.sleep(.3)
+        # try:
+        #     if not self.get_knowrob().stop_episode():
+        #         rospy.logwarn('failed to stop episode')
+        #     # now = datetime.datetime.now()
+        #     # self.get_knowrob().save_beliefstate('/home/arrina/rosout_logs/belief_state_{}-{}-{}-{}-{}-{}.owl'.format(now.year, now.month, now.day, now.hour, now.minute, now.second))
+        # except Exception as e:
+        #     self.get_knowrob().print_with_prefix('failed to save beliefstate before reset')
+        # r.success = self.get_knowrob().reset_beliefstate()
+        r.success = True
         return r
 
     def query_shelf_systems_cb(self, data):
