@@ -48,6 +48,7 @@ def grow_tree(debug=True):
         b.robosherlock = FakeRoboSherlock(b.knowrob)
     else:
         b.robosherlock = RoboSherlock(b.knowrob)
+    b.robot = rospy.get_param('~robot', 'donbot')
 
     finish_perception_srv = rospy.Service('~finish_perception', FinishPerception, finish_perception_cb)
     # ----------------------------------------------
@@ -99,6 +100,7 @@ def grow_tree(debug=True):
 
 if __name__ == u'__main__':
     rospy.init_node('perception_interface')
+    # rospy.sleep(5)
     debug = False
     if debug:
         tree_tick_rate = 2000

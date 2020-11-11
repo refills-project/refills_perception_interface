@@ -503,7 +503,7 @@ class KnowRob(object):
             if i == 0:
                 layer_type = self.get_bottom_layer_type(shelf_system_id)
             else:
-                if 'hack' in self.left_right_dict[shelf_system_id] and self.left_right_dict[shelf_system_id]['hack']:
+                if self.left_right_dict[shelf_system_id]['hack']:
                     shelf_layer = self.get_shelf_layer_type(shelf_system_id)
                     depth_id = shelf_layer.find('DMFloorT') + 8
                     old_depth = int(shelf_layer[depth_id])

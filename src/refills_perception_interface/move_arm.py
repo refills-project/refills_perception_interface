@@ -56,9 +56,9 @@ class MoveArm(object):
     def set_default_self_collision_avoidance(self):
         if not self.avoid_self_collision:
             self.giskard.allow_self_collision()
-        else:
-            self.giskard.set_self_collision_distance(self.self_collision_min_dist)
-            self.giskard.allow_collision(['ur5_wrist_3_link'], self.giskard.get_robot_name(), ['ur5_forearm_link'])
+        # else:
+        #     self.giskard.set_self_collision_distance(self.self_collision_min_dist)
+        #     self.giskard.allow_collision(['ur5_wrist_3_link'], self.giskard.get_robot_name(), ['ur5_forearm_link'])
 
     def set_and_send_cartesian_goal(self, goal_pose):
         self.set_translation_goal(goal_pose)

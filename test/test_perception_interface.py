@@ -19,7 +19,7 @@ from iai_naive_kinematics_sim.srv import SetJointState, SetJointStateRequest
 from sensor_msgs.msg import JointState
 from std_srvs.srv import Trigger, TriggerRequest
 
-from giskardpy.urdf_object import URDFObject
+from refills_perception_interface.move_arm_kmr_iiwa import MoveArm
 from refills_perception_interface.move_base import MoveBase
 
 NUM_SHELVES = 4
@@ -76,7 +76,7 @@ def interface(setup):
 
 
 class InterfaceWrapper(object):
-    def __init__(self, sim=True, move=True):
+    def __init__(self, sim=False, move=True):
         # rospy.init_node('tests')
         # rospy.set_param(DummyInterfaceNodeName + '/initial_beliefstate', 'package://refills_perception_interface/owl/muh.owl')
         # rospy.set_param(DummyInterfaceNodeName + '/initial_beliefstate',
@@ -117,20 +117,17 @@ class InterfaceWrapper(object):
         self.sleep = sim
         self.sleep_amount = 0
         self.move = move
-        if URDFObject(rospy.get_param('robot_description')).get_name() == 'iai_donbot':
-            from refills_perception_interface.move_arm import MoveArm
-            self.giskard = MoveArm(avoid_self_collisinon=True)
-        else:
-            from refills_perception_interface.move_arm_kmr_iiwa import MoveArm
-            self.giskard = MoveArm(avoid_self_collisinon=True)
+        self.giskard = MoveArm(avoid_self_collisinon=True)
         # self.base = MoveBase()
         rospy.sleep(.5)
 
     def reset(self):
+        # self.query_shelf_systems()
+        # self.query_shelf_systems()
         self.cancel_detect_shelf_layers()
         self.cancel_detect_facings()
         self.cancel_count_products()
-        self.query_reset_belief_state()
+        # self.query_reset_belief_state()
 
     # -------------------------------------------------------------other------------------------------------------------
     def query_shelf_systems(self):

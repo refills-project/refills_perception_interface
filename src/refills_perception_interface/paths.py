@@ -1,22 +1,25 @@
 from __future__ import division
 
 import rospkg
-import yaml
+from copy import deepcopy
 from math import radians
+import numpy as np
 
 import PyKDL
-import numpy as np
 import rospy
 from control_msgs.msg import FollowJointTrajectoryActionGoal
-from geometry_msgs.msg import PoseStamped, Quaternion, Point
-from refills_msgs.msg import FullBodyPosture, FullBodyPath
+from refills_msgs.msg import FullBodyPosture, JointPosition, FullBodyPath
+from geometry_msgs.msg import PoseStamped, Quaternion, Point, QuaternionStamped
 from rospy_message_converter.message_converter import convert_dictionary_to_ros_message
 from sensor_msgs.msg import JointState
 from tf.transformations import quaternion_about_axis
+from trajectory_msgs.msg import JointTrajectory
 
 from refills_perception_interface.knowrob_wrapper import KnowRob
 from refills_perception_interface.tfwrapper import transform_pose, msg_to_kdl, lookup_pose, lookup_transform, \
     kdl_to_posestamped
+import yaml
+
 from refills_perception_interface.utils import kdl_to_pose
 
 # TORSO_LIN1_UPPER_LIMIT = 0.6
@@ -39,13 +42,14 @@ class Paths(object):
         :type knowrob: KnowRob
         """
         self.knowrob = knowrob
-        self.ceiling_height = rospy.get_param('~ceiling_height')
+        self.ceiling_height = rospy.get_param('~ceiling_height', 3)
         self.joint_names = ['ur5_shoulder_pan_joint',
                             'ur5_shoulder_lift_joint',
                             'ur5_elbow_joint',
                             'ur5_wrist_1_joint',
                             'ur5_wrist_2_joint',
-                            'ur5_wrist_3_joint']
+                            'ur5_wrist_3_joint', ]
+        self.base_link = 'base_footprint'
 
     def load_traj(self, name):
         rospack = rospkg.RosPack()
@@ -59,11 +63,11 @@ class Paths(object):
             except yaml.YAMLError as exc:
                 print(exc)
 
-    # def get_shelf_layer_detection_traj(self):
-    #     """
-    #     :rtype: JointTrajectory
-    #     """
-    #     return self.load_traj('shelf_layer_path')
+    def get_shelf_layer_detection_traj(self):
+        """
+        :rtype: JointTrajectory
+        """
+        return self.load_traj('shelf_layer_path')
 
     def height_to_cam_pose(self, desired_height):
         """
@@ -72,7 +76,7 @@ class Paths(object):
         :return: goal height for lin joint 1, goal height for lin joint 2
         :rtype: PoseStamped
         """
-        cam_pose = lookup_pose('base_footprint', 'camera_link')
+        cam_pose = lookup_pose(self.base_link, 'camera_link')
         cam_pose.pose.position.z = max(MIN_CAM_HEIGHT, min(desired_height, MAX_CAM_HEIGHT))
         return cam_pose
 
@@ -165,7 +169,7 @@ class Paths(object):
         :rtype: PyKDL.Frame
         """
         # if self.T_bf___cam_joint is None:
-        T_bf___cam_joint = msg_to_kdl(lookup_transform('base_footprint', 'camera_link'))
+        T_bf___cam_joint = msg_to_kdl(lookup_transform(self.base_link, 'camera_link'))
         T_bf___cam_joint.p[2] = 0
         T_bf___cam_joint.M = PyKDL.Rotation()
         return T_bf___cam_joint
@@ -212,6 +216,7 @@ class Paths(object):
             full_body_pose.type = FullBodyPosture.BASE
             full_body_path.postures.append(full_body_pose)
 
+
         # calculate base pose
         base_pose = self.base_pose_in_front_of_shelf(shelf_system_id, shelf_system_width / 2, y=-0.85)
         base_pose = transform_pose(self.knowrob.get_perceived_frame_id(shelf_system_id), base_pose)
@@ -235,8 +240,7 @@ class Paths(object):
         full_body_path.postures.append(full_body_pose)
 
         full_body_pose = FullBodyPosture()
-        full_body_pose.base_pos = self.cam_pose_in_front_of_shelf(shelf_system_id, x=shelf_system_width / 2,
-                                                                  y=-0.55)
+        full_body_pose.base_pos = self.cam_pose_in_front_of_shelf(shelf_system_id, x=shelf_system_width / 2, y=-0.55)
         full_body_pose.type = FullBodyPosture.CAM_FOOTPRINT
         full_body_path.postures.append(full_body_pose)
 
@@ -291,12 +295,14 @@ class Paths(object):
         # start base poses
         start_base_pose = self.cam_pose_in_front_of_layer(shelf_layer_id, goal_angle=goal_angle)
         start_base_pose = transform_pose('map', start_base_pose)
+        start_base_pose.header.stamp = rospy.Time()
         start_full_body_pose = FullBodyPosture()
         start_full_body_pose.type = FullBodyPosture.CAM_FOOTPRINT
         start_full_body_pose.base_pos = start_base_pose
 
         end_base_pose = self.cam_pose_in_front_of_layer(shelf_layer_id, x=shelf_system_width, goal_angle=goal_angle)
         end_base_pose = transform_pose('map', end_base_pose)
+        start_base_pose.header.stamp = rospy.Time()
         end_full_body_pose = FullBodyPosture()
         end_full_body_pose.type = FullBodyPosture.CAM_FOOTPRINT
         end_full_body_pose.base_pos = end_base_pose
@@ -364,6 +370,7 @@ class PathsKmrIiwa(Paths):
                             'iiwa_joint_5',
                             'iiwa_joint_6',
                             'iiwa_joint_7']
+        self.base_link = 'base_link'
 
     # def is_right(self, shelf_system_id):
     #     return super(PathsKmrIiwa, self).is_left(shelf_system_id)
@@ -371,31 +378,31 @@ class PathsKmrIiwa(Paths):
     # def is_left(self, shelf_system_id):
     #     return super(PathsKmrIiwa, self).is_right(shelf_system_id)
 
-    def get_floor_detection_pose_left(self):
-        joint_state = JointState()
-        joint_state.name = self.joint_names
-        joint_state.position = [
-            0.0,
-            -0.54,
-            0.0,
-            -0.46,
-            -1.57,
-            1.7,
-            -0.9,
-        ]
-        return joint_state
-
     def get_floor_detection_pose_right(self):
         joint_state = JointState()
         joint_state.name = self.joint_names
         joint_state.position = [
-            0.0,
-            -0.54,
-            0.0,
-            -0.46,
-            -1.57,
-            -1.7,
-            0.9,
+            0.05,
+            -0.48,
+            0.02,
+            -0.26,
+            -1.52,
+            1.76,
+            -0.99,
+        ]
+        return joint_state
+
+    def get_floor_detection_pose_left(self):
+        joint_state = JointState()
+        joint_state.name = self.joint_names
+        joint_state.position = [
+            -0.05,
+            -0.49,
+            -0.03,
+            -0.28,
+            -1.62,
+            -1.76,
+            0.97,
         ]
         return joint_state
 
@@ -446,7 +453,7 @@ class PathsKmrIiwa(Paths):
         full_body_pose = FullBodyPosture()
         full_body_pose.type = FullBodyPosture.CAMERA
         full_body_pose.camera_pos.header.frame_id = 'camera_link'
-        full_body_pose.camera_pos.pose.position = Point(0, 1.364, 0)
+        full_body_pose.camera_pos.pose.position = Point(0, 1.45, 0)
         full_body_pose.camera_pos.pose.orientation = Quaternion(0, 0, 0, 1)
         full_body_path.postures.append(full_body_pose)
 
