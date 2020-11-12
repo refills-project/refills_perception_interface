@@ -132,8 +132,8 @@ class KnowRob(object):
         """
         ros_pose = PoseStamped()
         ros_pose.header.frame_id = query_result[0]
-        ros_pose.pose.position = Point(*query_result[2])
-        ros_pose.pose.orientation = Quaternion(*query_result[3])
+        ros_pose.pose.position = Point(*query_result[1])
+        ros_pose.pose.orientation = Quaternion(*query_result[2])
         return ros_pose
 
     def read_left_right_json(self):
@@ -230,15 +230,16 @@ class KnowRob(object):
         q = 'triple(\'{}\', dul:hasComponent, Floor), ' \
             'instance_of(Floor, {}), ' \
             'object_feature_type(Floor, Feature, dmshop:\'DMShelfPerceptionFeature\'),' \
-            'object_frame_name(Feature, FeatureFrame).'.format(shelf_system_id, SHELF_FLOOR)
+            'holds(Feature, knowrob:frameName, FeatureFrame).'.format(shelf_system_id, SHELF_FLOOR)
 
         solutions = self.all_solutions(q)
-        floors = []
+        floors = {}
         shelf_frame_id = self.get_perceived_frame_id(shelf_system_id)
         for solution in solutions:
             floor_id = solution['Floor'].replace('\'', '')
             floor_pose = lookup_pose(shelf_frame_id, solution['FeatureFrame'].replace('\'', ''))
-            floors.append((floor_id, floor_pose))
+            floors[floor_id] = floor_pose
+        floors = floors.items()
         floors = list(sorted(floors, key=lambda x: x[1].pose.position.z))
         floors = [x for x in floors if x[1].pose.position.z < MAX_SHELF_HEIGHT]
         self.floors = OrderedDict(floors)
@@ -526,7 +527,11 @@ class KnowRob(object):
             new_floor_height = np.mean(separator_zs)
             current_floor_pose = lookup_pose(MAP, self.get_object_frame_id(shelf_layer_id))
             current_floor_pose.pose.position.z += new_floor_height - old_p.pose.position.z
-            q = 'is_at(\'{}\', {})'.format(shelf_layer_id, self.pose_to_prolog(current_floor_pose))
+            shelf_system = self.get_shelf_system_from_layer(shelf_layer_id)
+            frame_id = self.get_object_frame_id(shelf_system)
+            current_floor_pose.header.stamp = rospy.Time()
+            current_floor_pose = transform_pose(frame_id, current_floor_pose)
+            q = 'tell(is_at(\'{}\', {}))'.format(shelf_layer_id, self.pose_to_prolog(current_floor_pose))
             self.once(q)
 
     def add_separators(self, shelf_layer_id, separators):
@@ -586,8 +591,8 @@ class KnowRob(object):
         q = 'bulk_insert_floor(\'{}\', separators({}), labels({}))'.format(shelf_layer_id, separators_xs, barcodes)
         self.once(q)
         rospy.sleep(5)
-        q = 'shelf_facings_mark_dirty(\'{}\')'.format(shelf_layer_id)
-        self.once(q)
+        # q = 'shelf_facings_mark_dirty(\'{}\')'.format(shelf_layer_id)
+        # self.once(q)
 
     # def assert_confidence(self, facing_id, confidence):
     #     q = 'tell(holds(\'{}\', knowrob:confidence, \'{}\')).'.format(facing_id, confidence)
@@ -632,7 +637,7 @@ class KnowRob(object):
         :type shelf_layer_id: str
         :rtype: float
         """
-        q = 'object_dimensions(\'{}\', D, W, H).'.format(shelf_layer_id)
+        q = 'holds(\'{}\', knowrob:widthOfObject, W)'.format(shelf_layer_id)
         solution = self.once(q)
         if solution:
             width = solution['W']
@@ -645,7 +650,7 @@ class KnowRob(object):
         :type shelf_system_id: str
         :rtype: float
         """
-        q = 'object_dimensions(\'{}\', D, W, H).'.format(shelf_system_id)
+        q = 'holds(\'{}\', knowrob:widthOfObject, W)'.format(shelf_system_id)
         solution = self.once(q)
         width = solution['W']
         return width
@@ -655,7 +660,7 @@ class KnowRob(object):
         :type shelf_system_id: str
         :rtype: float
         """
-        q = 'object_dimensions(\'{}\', D, W, H).'.format(shelf_system_id)
+        q = 'holds(\'{}\', knowrob:heightOfObject, H)'.format(shelf_system_id)
         solution = self.once(q)
         height = solution['H']
         return height

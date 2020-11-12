@@ -41,7 +41,7 @@ def grow_tree(debug=True):
     b = Blackboard()
     b.finished = False
     b.lock = TimeoutLock()
-    b.knowrob = KnowRob(initial_mongo_db='/home/arrina/mongo_logs/2020-11-11_11-24-18_pp/roslog',
+    b.knowrob = KnowRob(initial_mongo_db=rospy.get_param('~initial_beliefstate'),
                         clear_roslog=True)
     b.robot = rospy.get_param('~robot')
     if roboserlock_sim:

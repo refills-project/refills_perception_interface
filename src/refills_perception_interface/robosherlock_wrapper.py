@@ -23,7 +23,7 @@ MAP = 'map'
 class FakeRoboSherlock(object):
     prefix = 'robosherlock wrapper'
 
-    def __init__(self, knowrob, num_of_facings=3):
+    def __init__(self, knowrob, num_of_facings=2):
         self.knowrob = knowrob  # type: KnowRob
         self.number_of_facings = num_of_facings
         self.get_all_barcodes()
@@ -41,7 +41,7 @@ class FakeRoboSherlock(object):
         """
         :type floor_id: str
         """
-        self.number_of_facings = max(4, int(np.random.normal(loc=7, scale=2)))
+        # self.number_of_facings = max(4, int(np.random.normal(loc=7, scale=2)))
         self.current_shelf_layer_id = floor_id
 
     def stop_separator_detection(self, frame_id):
@@ -109,7 +109,7 @@ class FakeRoboSherlock(object):
         :type facing_id: str
         :rtype: int
         """
-        self.knowrob.assert_confidence(facing_id, 0.88)
+        # self.knowrob.assert_confidence(facing_id, 0.88)
         i = int(np.random.random() * 2)
         if i > 0:
             return 1
