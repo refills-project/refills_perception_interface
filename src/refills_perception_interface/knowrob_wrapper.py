@@ -637,7 +637,7 @@ class KnowRob(object):
         :type shelf_layer_id: str
         :rtype: float
         """
-        q = 'holds(\'{}\', knowrob:widthOfObject, W)'.format(shelf_layer_id)
+        q = 'object_dimensions(\'{}\', _, W, _)'.format(shelf_layer_id)
         solution = self.once(q)
         if solution:
             width = solution['W']
@@ -650,7 +650,7 @@ class KnowRob(object):
         :type shelf_system_id: str
         :rtype: float
         """
-        q = 'holds(\'{}\', knowrob:widthOfObject, W)'.format(shelf_system_id)
+        q = 'object_dimensions(\'{}\', _, W, _)'.format(shelf_system_id)
         solution = self.once(q)
         width = solution['W']
         return width
@@ -660,7 +660,7 @@ class KnowRob(object):
         :type shelf_system_id: str
         :rtype: float
         """
-        q = 'holds(\'{}\', knowrob:heightOfObject, H)'.format(shelf_system_id)
+        q = 'object_dimensions(\'{}\', _, _, H)'.format(shelf_system_id)
         solution = self.once(q)
         height = solution['H']
         return height
