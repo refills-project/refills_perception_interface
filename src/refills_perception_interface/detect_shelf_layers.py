@@ -28,6 +28,7 @@ class DetectShelfLayersBehavior(PerceptionBehavior):
         else:
             result.error = DetectShelfLayersResult.SUCCESS
             shelf_layer_heights = self.get_robosherlock().stop_detect_shelf_layers(self.current_goal.id)
+            print_with_prefix('detected layers at: {}'.format(shelf_layer_heights), self.prefix)
             self.get_knowrob().add_shelf_layers(self.current_goal.id, shelf_layer_heights)
             result.ids = self.get_knowrob().get_shelf_layer_from_system(self.current_goal.id).keys()
             print_with_prefix('finished', self.prefix)

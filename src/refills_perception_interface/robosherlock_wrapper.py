@@ -84,7 +84,8 @@ class FakeRoboSherlock(object):
         """
         barcodes = {}
         width = self.knowrob.get_shelf_layer_width(self.current_shelf_layer_id)
-        num_of_barcodes = max(1, self.number_of_facings - int(np.random.rand() * 3))
+        num_of_barcodes = 1
+        # num_of_barcodes = max(1, self.number_of_facings - int(np.random.rand() * 3))
         for i in range(num_of_barcodes):
             barcode = PoseStamped()
             barcode.header.frame_id = self.knowrob.get_perceived_frame_id(self.current_shelf_layer_id)
