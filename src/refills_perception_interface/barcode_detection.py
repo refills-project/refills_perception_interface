@@ -18,7 +18,6 @@ from tf2_geometry_msgs import do_transform_pose
 from visualization_msgs.msg import Marker, MarkerArray
 from rospkg import RosPack
 
-from refills_perception_interface.knowrob_wrapper import KnowRob
 from refills_perception_interface.tfwrapper import transform_pose, lookup_transform
 
 MAP = 'map'
@@ -140,10 +139,10 @@ class BarcodeDetector(object):
         if len(ma.markers) > 0:
             self.marker_pub.publish(ma)
 
-if __name__ == u'__main__':
-    rospy.init_node('asdf')
-    kr = KnowRob()
-    b = BarcodeDetector(kr)
-    # b.start_listening()
-    rospy.sleep(5)
-    b.cluster()
+# if __name__ == u'__main__':
+#     rospy.init_node('asdf')
+#     kr = KnowRob()
+#     b = BarcodeDetector(kr)
+#     # b.start_listening()
+#     rospy.sleep(5)
+#     b.cluster()

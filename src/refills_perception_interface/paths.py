@@ -15,7 +15,6 @@ from sensor_msgs.msg import JointState
 from tf.transformations import quaternion_about_axis
 from trajectory_msgs.msg import JointTrajectory
 
-from refills_perception_interface.knowrob_wrapper import KnowRob
 from refills_perception_interface.tfwrapper import transform_pose, msg_to_kdl, lookup_pose, lookup_transform, \
     kdl_to_posestamped
 import yaml
@@ -106,7 +105,7 @@ class Paths(object):
         return self.knowrob.is_right(shelf_system_id)
 
     def get_via_points(self, shelf_system_id):
-        return self.knowrob.left_right_dict[shelf_system_id]['via-points']
+        return self.knowrob.order_dict[shelf_system_id]['via-points']
 
     def cam_pose_in_front_of_shelf(self, shelf_system_id, frame_id=None, x=0., y=-0.55, x_limit=0.1, goal_angle=0.):
         """
@@ -426,9 +425,9 @@ class PathsKmrIiwa(Paths):
         base_pose = self.base_pose_in_front_of_shelf(shelf_system_id, shelf_system_width / 2, y=-0.85)
         base_pose = transform_pose(self.knowrob.get_perceived_frame_id(shelf_system_id), base_pose)
         if self.is_left(shelf_system_id):
-            base_pose.pose.position.x += 0.5
+            base_pose.pose.position.x -= 0.35
         else:
-            base_pose.pose.position.x -= 0.5
+            base_pose.pose.position.x += 0.35
         base_pose = transform_pose('map', base_pose)
 
         full_body_pose = FullBodyPosture()
@@ -458,3 +457,6 @@ class PathsKmrIiwa(Paths):
         full_body_path.postures.append(full_body_pose)
 
         return full_body_path
+
+    def base_pose_in_front_of_shelf(self, shelf_system_id, x=0., y=-0.5, x_limit=0.1):
+        return super(PathsKmrIiwa, self).base_pose_in_front_of_shelf(shelf_system_id, x, y, x_limit)

@@ -40,8 +40,8 @@ class FakeRoboSherlock(object):
         """
         :type floor_id: str
         """
-        # self.number_of_facings = max(4, int(np.random.normal(loc=7, scale=2)))
-        self.current_shelf_layer_id = floor_id
+        self.number_of_facings = max(4, int(np.random.normal(loc=7, scale=2)))
+        # self.current_shelf_layer_id = floor_id
 
     def stop_separator_detection(self, frame_id):
         """
@@ -83,8 +83,8 @@ class FakeRoboSherlock(object):
         """
         barcodes = {}
         width = self.knowrob.get_shelf_layer_width(self.current_shelf_layer_id)
-        num_of_barcodes = 1
-        # num_of_barcodes = max(1, self.number_of_facings - int(np.random.rand() * 3))
+        # num_of_barcodes = 1
+        num_of_barcodes = max(1, self.number_of_facings - int(np.random.rand() * 3))
         for i in range(num_of_barcodes):
             barcode = PoseStamped()
             barcode.header.frame_id = self.knowrob.get_perceived_frame_id(self.current_shelf_layer_id)
@@ -129,6 +129,7 @@ class FakeRoboSherlock(object):
         # shelf_system_height = self.knowrob.get_shelf_system_height(shelf_system_id)
 
         num_of_layer = min(5, max(3, int(np.random.normal(loc=4, scale=0.5))))
+        # num_of_layer = 1
         heights = np.array([(x / num_of_layer) * max_height for x in range(num_of_layer)] + [max_height]) + 0.2
         for i in range(len(heights)):
             heights[i] += np.random.normal(scale=0.03)

@@ -7,11 +7,11 @@ from refills_msgs.msg import DetectShelfLayersAction, DetectFacingsAction, Count
 from refills_msgs.srv import FinishPerception, FinishPerceptionResponse
 from py_trees import Behaviour, Blackboard, Status, BehaviourTree, Sequence, Selector
 
+from knowrob_refills.knowrob_wrapper import KnowRob
 from refills_perception_interface.action_server_behavior import GoalReceived, PerceptionBehavior
 from refills_perception_interface.count_products import CountProductsBehavior
 from refills_perception_interface.detect_facings import DetectFacingsBehavior
 from refills_perception_interface.detect_shelf_layers import DetectShelfLayersBehavior
-from refills_perception_interface.knowrob_wrapper import KnowRob
 from refills_perception_interface.query_behavior import QueryBehavior
 from refills_perception_interface.robosherlock_wrapper import FakeRoboSherlock, RoboSherlock
 from refills_perception_interface.utils import TimeoutLock, print_with_prefix

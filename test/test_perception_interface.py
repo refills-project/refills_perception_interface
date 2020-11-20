@@ -76,7 +76,7 @@ def interface(setup):
 
 
 class InterfaceWrapper(object):
-    def __init__(self, sim=True, move=False):
+    def __init__(self, move=False):
         # rospy.init_node('tests')
         # rospy.set_param(DummyInterfaceNodeName + '/initial_beliefstate', 'package://refills_perception_interface/owl/muh.owl')
         # rospy.set_param(DummyInterfaceNodeName + '/initial_beliefstate',
@@ -114,7 +114,7 @@ class InterfaceWrapper(object):
 
         # self.simple_base_goal_pub = rospy.Publisher('move_base_simple/goal', PoseStamped)
         self.simple_joint_goal = rospy.ServiceProxy('refills_bot/set_joint_states', SetJointState)
-        self.sleep = sim
+        # self.sleep = sim
         self.sleep_amount = 0
         self.move = move
         self.giskard = MoveArm(avoid_self_collisinon=True)
@@ -207,11 +207,11 @@ class InterfaceWrapper(object):
 
     def detect_shelf_layers(self, shelf_system_id, path):
         self.start_detect_shelf_layers(shelf_system_id)
-        if self.sleep:
-            rospy.sleep(self.sleep_amount)
-        else:
-            if path is not None:
-                self.execute_full_body_path(path)
+        # if self.sleep:
+        #     rospy.sleep(self.sleep_amount)
+        # else:
+        if path is not None:
+            self.execute_full_body_path(path)
         self.finish_perception()
         r = self.get_detect_shelf_layers_result()
         assert len(r.ids) > 0
@@ -243,10 +243,10 @@ class InterfaceWrapper(object):
 
     def detect_facings(self, layer_id, path):
         self.start_detect_facings(layer_id)
-        if self.sleep:
-            rospy.sleep(self.sleep_amount)
-        else:
-            self.execute_full_body_path(path)
+        # if self.sleep:
+        #     rospy.sleep(self.sleep_amount)
+        # else:
+        self.execute_full_body_path(path)
         self.finish_perception()
         r = self.get_detect_facings_result()
         assert len(r.ids) > 0
@@ -520,7 +520,8 @@ class TestPerceptionInterface(object):
         """
         shelf_ids = interface.query_shelf_systems()
         for shelf_id in shelf_ids:
-            interface.giskard.drive_pose()
+            if interface.move:
+                interface.giskard.drive_pose()
             path = interface.query_detect_shelf_layers_path(shelf_id)
             interface.detect_shelf_layers(shelf_id, path)
             layers = interface.query_shelf_layers(shelf_id)

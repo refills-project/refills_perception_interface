@@ -1,6 +1,5 @@
 from py_trees import Behaviour, Blackboard
 
-from refills_perception_interface.knowrob_wrapper import KnowRob
 from refills_perception_interface.robosherlock_wrapper import FakeRoboSherlock, RoboSherlock
 
 

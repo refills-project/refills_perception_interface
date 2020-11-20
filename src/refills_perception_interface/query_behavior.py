@@ -1,5 +1,5 @@
+from datetime import datetime
 from multiprocessing import Lock
-import datetime
 import rospy
 from refills_msgs.msg import FullBodyPosture, JointPosition
 from refills_msgs.srv import QueryShelfSystems, QueryShelfLayers, QueryFacings, QueryDetectShelfLayersPath, \
@@ -48,6 +48,7 @@ class QueryBehavior(MyBahaviour):
         self.visualization_marker_pub = rospy.Publisher('visualization_marker', Marker, queue_size=10)
 
         # self.initial_beliefstate = rospy.get_param('~initial_beliefstate')
+        self.path = '~/mongo_logs'
 
         return super(QueryBehavior, self).setup(timeout)
 
@@ -75,6 +76,10 @@ class QueryBehavior(MyBahaviour):
         """
         # self.initial_beliefstate = rospy.get_param('~initial_beliefstate')
         r = TriggerResponse()
+        stamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+        path = self.path + '/' + stamp
+        rospy.loginfo('dumping to {}'.format(path))
+        self.get_knowrob().mongo_dump_database(path)
         # m = Marker()
         # m.action = Marker.DELETEALL
         # self.visualization_marker_pub.publish(m)
