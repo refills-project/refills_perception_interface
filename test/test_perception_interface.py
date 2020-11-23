@@ -247,6 +247,7 @@ class InterfaceWrapper(object):
         #     rospy.sleep(self.sleep_amount)
         # else:
         self.execute_full_body_path(path)
+        rospy.sleep(1)
         self.finish_perception()
         r = self.get_detect_facings_result()
         assert len(r.ids) > 0

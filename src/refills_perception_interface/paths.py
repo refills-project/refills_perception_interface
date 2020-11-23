@@ -445,7 +445,7 @@ class PathsKmrIiwa(Paths):
 
         full_body_pose = FullBodyPosture()
         full_body_pose.base_pos = self.cam_pose_in_front_of_shelf(shelf_system_id, x=shelf_system_width / 2,
-                                                                  y=-0.41)
+                                                                  y=-0.47)
         full_body_pose.type = FullBodyPosture.CAM_FOOTPRINT
         full_body_path.postures.append(full_body_pose)
 
