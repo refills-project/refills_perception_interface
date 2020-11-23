@@ -292,7 +292,7 @@ class Paths(object):
 
         # base poses
         # start base poses
-        start_base_pose = self.cam_pose_in_front_of_layer(shelf_layer_id, goal_angle=goal_angle)
+        start_base_pose = self.cam_pose_in_front_of_layer(shelf_layer_id, goal_angle=goal_angle, y=-0.5)
         start_base_pose = transform_pose('map', start_base_pose)
         start_base_pose.header.stamp = rospy.Time()
         start_full_body_pose = FullBodyPosture()
@@ -445,7 +445,7 @@ class PathsKmrIiwa(Paths):
 
         full_body_pose = FullBodyPosture()
         full_body_pose.base_pos = self.cam_pose_in_front_of_shelf(shelf_system_id, x=shelf_system_width / 2,
-                                                                  y=-0.55)
+                                                                  y=-0.41)
         full_body_pose.type = FullBodyPosture.CAM_FOOTPRINT
         full_body_path.postures.append(full_body_pose)
 
@@ -460,3 +460,108 @@ class PathsKmrIiwa(Paths):
 
     def base_pose_in_front_of_shelf(self, shelf_system_id, x=0., y=-0.5, x_limit=0.1):
         return super(PathsKmrIiwa, self).base_pose_in_front_of_shelf(shelf_system_id, x, y, x_limit)
+
+    def get_detect_facings_path(self, shelf_layer_id):
+        """
+        :type shelf_layer_id: str
+        :rtype: FullBodyPath
+        """
+        shelf_system_id = self.knowrob.get_shelf_system_from_layer(shelf_layer_id)
+        # shelf_system_frame_id = self.knowrob.get_perceived_frame_id(shelf_system_id)
+        shelf_system_width = self.knowrob.get_shelf_system_width(shelf_system_id)
+        shelf_layer_frame_id = self.knowrob.get_perceived_frame_id(shelf_layer_id)
+        full_body_path = FullBodyPath()
+
+        # TODO consider left right cases
+
+        # joints
+        # TODO layer above
+        shelf_layer_height = lookup_pose('map', shelf_layer_frame_id).pose.position.z
+        # TODO tune this number
+
+        to_low_offset = 0.05
+        other_offset = 0.05
+
+        full_body_pose = FullBodyPosture()
+        full_body_pose.type = FullBodyPosture.CAMERA
+
+        if self.layer_too_low(shelf_layer_height):
+            goal_angle = radians(-20)
+            full_body_pose = self.get_cam_pose(shelf_layer_height + to_low_offset, goal_angle,
+                                               self.is_left(shelf_system_id))
+        else:
+            goal_angle = radians(0)
+            full_body_pose = self.get_cam_pose(shelf_layer_height + other_offset, goal_angle,
+                                               self.is_left(shelf_system_id))
+
+        full_body_path.postures.append(full_body_pose)
+
+        # base poses
+        # start base poses
+        start_base_pose = self.cam_pose_in_front_of_layer(shelf_layer_id, goal_angle=goal_angle, y=-0.5)
+        start_base_pose = transform_pose('map', start_base_pose)
+        start_base_pose.header.stamp = rospy.Time()
+        start_full_body_pose = FullBodyPosture()
+        start_full_body_pose.type = FullBodyPosture.CAM_FOOTPRINT
+        start_full_body_pose.base_pos = start_base_pose
+
+        end_base_pose = self.cam_pose_in_front_of_layer(shelf_layer_id, x=shelf_system_width, goal_angle=goal_angle,
+                                                        y=-0.5)
+        end_base_pose = transform_pose('map', end_base_pose)
+        start_base_pose.header.stamp = rospy.Time()
+        end_full_body_pose = FullBodyPosture()
+        end_full_body_pose.type = FullBodyPosture.CAM_FOOTPRINT
+        end_full_body_pose.base_pos = end_base_pose
+
+        if self.is_left(shelf_system_id):
+            full_body_path.postures.append(end_full_body_pose)
+            full_body_path.postures.append(start_full_body_pose)
+        else:
+            full_body_path.postures.append(start_full_body_pose)
+            full_body_path.postures.append(end_full_body_pose)
+
+        return full_body_path
+
+
+    def get_count_product_posture(self, facing_id):
+        """
+        :type facing_id: str
+        :rtype: FullBodyPosture
+        """
+        shelf_layer_id = self.knowrob.get_shelf_layer_from_facing(facing_id)
+        shelf_system_id = self.knowrob.get_shelf_system_from_layer(shelf_layer_id)
+        # shelf_system_width = self.knowrob.get_shelf_system_width(shelf_system_id)
+        # shelf_system_frame_id = self.knowrob.get_perceived_frame_id(shelf_system_id)
+        shelf_layer_frame_id = self.knowrob.get_perceived_frame_id(shelf_layer_id)
+        facing_frame_id = self.knowrob.get_object_frame_id(facing_id)
+
+        # get height of next layer
+        # shelf_layer_above_id = self.knowrob.get_shelf_layer_above(shelf_layer_id)
+        # if shelf_layer_above_id is not None:
+        #     shelf_layer_above_frame_id = self.knowrob.get_perceived_frame_id(shelf_layer_above_id)
+        #     height_of_next_layer = lookup_transform('map', shelf_layer_above_frame_id).pose.position.z
+        # else:
+        #     height_of_next_layer = self.knowrob.get_shelf_system_height(shelf_system_id)
+
+        # joints
+        shelf_layer_height = lookup_pose('map', shelf_layer_frame_id).pose.position.z
+        counting_offset = 0.3
+        # TODO tune this number
+        torso_rot_1_height = shelf_layer_height + counting_offset
+        torso_rot_1_height = max(MIN_CAM_HEIGHT, torso_rot_1_height)
+
+        goal_angle = radians(-20)
+        full_body_pose = self.get_cam_pose(torso_rot_1_height, goal_angle, self.is_left(shelf_system_id))
+
+        facing_pose_on_layer = lookup_pose(shelf_layer_frame_id, facing_frame_id)
+
+        # base_pose = self.cam_pose_in_front_of_facing(facing_id, x=0, x_limit=0, goal_angle=goal_angle)
+        base_pose = self.cam_pose_in_front_of_layer(shelf_layer_id, x=facing_pose_on_layer.pose.position.x,
+                                                    y=-.5,
+                                                    goal_angle=goal_angle)
+
+        base_pose = transform_pose('map', base_pose)
+
+        full_body_pose.type = full_body_pose.BOTH
+        full_body_pose.base_pos = base_pose
+        return full_body_pose

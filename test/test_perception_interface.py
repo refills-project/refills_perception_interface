@@ -76,7 +76,7 @@ def interface(setup):
 
 
 class InterfaceWrapper(object):
-    def __init__(self, move=False):
+    def __init__(self, move=True):
         # rospy.init_node('tests')
         # rospy.set_param(DummyInterfaceNodeName + '/initial_beliefstate', 'package://refills_perception_interface/owl/muh.owl')
         # rospy.set_param(DummyInterfaceNodeName + '/initial_beliefstate',
