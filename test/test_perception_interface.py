@@ -247,7 +247,7 @@ class InterfaceWrapper(object):
         #     rospy.sleep(self.sleep_amount)
         # else:
         self.execute_full_body_path(path)
-        rospy.sleep(1)
+        rospy.sleep(3)
         self.finish_perception()
         r = self.get_detect_facings_result()
         assert len(r.ids) > 0
@@ -534,6 +534,8 @@ class TestPerceptionInterface(object):
                     posture = interface.query_count_products_posture(facing_id)
                     interface.execute_full_body_posture(posture)
                     count = interface.count_products(facing_id)
+        if interface.move:
+            interface.giskard.drive_pose()
 
     def test_shop_scan_no_counting(self, interface):
         """

@@ -24,7 +24,7 @@ from refills_perception_interface.utils import kdl_to_pose
 # TORSO_LIN1_UPPER_LIMIT = 0.6
 # TORSO_LIN2_UPPER_LIMIT = 1.295
 MIN_CAM_HEIGHT = 0.35
-MAX_CAM_HEIGHT = 1.2
+MAX_CAM_HEIGHT = 1.35
 
 
 # CAM_IN_BASE_LINK = 0.862
@@ -498,7 +498,7 @@ class PathsKmrIiwa(Paths):
 
         # base poses
         # start base poses
-        start_base_pose = self.cam_pose_in_front_of_layer(shelf_layer_id, goal_angle=goal_angle, y=-0.5)
+        start_base_pose = self.cam_pose_in_front_of_layer(shelf_layer_id, goal_angle=goal_angle, y=-0.53)
         start_base_pose = transform_pose('map', start_base_pose)
         start_base_pose.header.stamp = rospy.Time()
         start_full_body_pose = FullBodyPosture()
@@ -506,7 +506,7 @@ class PathsKmrIiwa(Paths):
         start_full_body_pose.base_pos = start_base_pose
 
         end_base_pose = self.cam_pose_in_front_of_layer(shelf_layer_id, x=shelf_system_width, goal_angle=goal_angle,
-                                                        y=-0.5)
+                                                        y=-0.53)
         end_base_pose = transform_pose('map', end_base_pose)
         start_base_pose.header.stamp = rospy.Time()
         end_full_body_pose = FullBodyPosture()

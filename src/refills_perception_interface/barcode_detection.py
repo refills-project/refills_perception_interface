@@ -64,7 +64,7 @@ class BarcodeDetector(object):
         """
         self.listen = False
         barcodes = self.cluster()
-        self.publish_as_marker(barcodes)
+        # self.publish_as_marker(barcodes)
         rospy.loginfo('detected {} barcodes'.format(len(barcodes)))
         return barcodes
 

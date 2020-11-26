@@ -1,5 +1,8 @@
 from __future__ import print_function, division
 
+from copy import deepcopy
+
+import PyKDL as kdl
 import json
 import numpy as np
 
@@ -8,17 +11,61 @@ from geometry_msgs.msg import PoseStamped, Point, Quaternion
 from robosherlock_msgs.srv import RSQueryService, RSQueryServiceRequest
 from rospy import ROSException
 
-from kineverse.utils import deepcopy
 from rospy_message_converter import message_converter
 
+from giskardpy.tfwrapper import pose_to_kdl
+from knowrob_refills.knowrob_wrapper import KnowRob
 from refills_perception_interface.barcode_detection import BarcodeDetector
-from refills_perception_interface.knowrob_wrapper import KnowRob
 from refills_perception_interface.not_hacks import add_bottom_layer_if_not_present
 from refills_perception_interface.separator_detection import SeparatorClustering
 from refills_perception_interface.tfwrapper import transform_pose
 from refills_perception_interface.utils import print_with_prefix, error_with_refix
 
 MAP = 'map'
+
+
+class DetectedObject(object):
+    def __init__(self,
+                 answer=None,
+                 depth=0,
+                 width=0,
+                 height=0,
+                 camera_T_object=None):
+        self.map_T_object = None
+        if answer is None:
+            self.depth = depth
+            self.width = width
+            self.height = height
+            self.camera_T_object = camera_T_object
+        else:
+            geometry = answer['rs.annotation.Geometry'][0]
+            bounding_box = geometry['boundingBox']['rs.pcl.BoundingBox3D']
+            self.depth = bounding_box['depth']
+            self.width = bounding_box['width']
+            self.height = bounding_box['height']
+            self.volume = bounding_box['volume']
+            pose = answer['rs.annotation.PoseAnnotation'][0]['camera']['rs.tf.StampedPose']
+            self.camera_T_object = PoseStamped()
+            self.camera_T_object.header.frame_id = pose['frame']
+            seconds = int(str(pose['timestamp'])[:10])
+            nano_seconds = int(str(pose['timestamp'])[10:])
+            self.camera_T_object.header.stamp = rospy.Time(seconds, nano_seconds)
+            self.camera_T_object.pose.position = Point(*pose['translation'])
+            self.camera_T_object.pose.orientation = Quaternion(*pose['rotation'])
+        self.front_area = self.width * self.height
+
+    def fix_dimensions(self, dim1, dim2, dim3):
+        return # fuck it
+        dims = [dim1, dim2, dim3]
+        self.height = dims[abs(np.array(dims) - self.height).argmin()]
+        dims.remove(self.height)
+        self.width = dims[abs(np.array(dims) - self.width).argmin()]
+        dims.remove(self.width)
+        self.depth = dims[0]
+        camera_T_object = pose_to_kdl(self.camera_T_object.pose)
+        object_T_offset = kdl.Frame()
+        # object_T_offset.p.x
+
 
 
 class FakeRoboSherlock(object):
@@ -140,7 +187,7 @@ class FakeRoboSherlock(object):
         detected_shelf_layers = heights
         return add_bottom_layer_if_not_present(detected_shelf_layers.tolist(), shelf_system_id, self.knowrob)
 
-    def see(self, depth, width, height):
+    def see(self, depth, width, height, object_type):
         p = PoseStamped()
         p.header.frame_id = 'map'
         p.pose.position = Point(2.7, 1.9, 0.8)
@@ -149,6 +196,7 @@ class FakeRoboSherlock(object):
 
     def set_ring_light(self, value=True):
         pass
+
 
 class RoboSherlock(FakeRoboSherlock):
     def __init__(self, knowrob, name='RoboSherlock', check_camera=True):
@@ -298,6 +346,7 @@ class RoboSherlock(FakeRoboSherlock):
         return floors
 
     def count_product(self, facing_id):
+        self.knowrob.compute_shelf_product_type(facing_id)
         self.set_ring_light(True)
         shelf_layer_id = self.knowrob.get_shelf_layer_from_facing(facing_id)
         shelf_system_id = self.knowrob.get_shelf_system_from_layer(shelf_layer_id)
@@ -309,69 +358,116 @@ class RoboSherlock(FakeRoboSherlock):
         self.print_with_prefix('sending: {}'.format(q))
         req = RSQueryServiceRequest()
         req.query = json.dumps(q)
-        rospy.sleep(0.4)
+        rospy.sleep(0.8)
         result = self.robosherlock_service.call(req)
         self.print_with_prefix('received: {}'.format(result))
         count = 0
+        predicted = ''
+        expected = ''
         if len(result.answer):
             try:
-                result_dict = [json.loads(x)['rs.annotation.Detection'] for x in result.answer]
+                for answer in result.answer:
+                    r = json.loads(answer)
+                    if r['rs.annotation.Detection'][0]['source'] == 'ProductCounter':
+                        count += 1
+                    else:
+                        predicted = r['rs.annotation.Classification'][0]['classname']
+                        expected = self.add_gtin_checksum(r['rs.annotation.Detection'][0]['name'])
+                # result_dict = [json.loads(x)['rs.annotation.Detection'] for x in result.answer]
+                # for r in result_dict:
+                #     if r[0]['source'] == 'FacingDetection':
+                #         expected_gtin = self.add_gtin_checksum(r[0]['name'])
+                #         detected_gtin = self.add_gtin_checksum(r[0]['name'])
+                #     elif r[0]['source'] == 'ProductCounter':
+                #         count += 1
                 # count = json.loads(result.answer[0])['rs_refills.refills.ProductCount'][0]['product_count']
-                confidence = [x for x in result_dict if x[0]['source'] == 'FacingDetection'][0][0]['confidence']
+                # confidence = [x for x in result_dict if x[0]['source'] == 'FacingDetection'][0][0]['confidence']
             except:
-                confidence = 0.01
                 result.answer = [0, 0]
                 rospy.logerr(result.answer)
-            self.knowrob.assert_confidence(facing_id, confidence)
-        count = max(0, len(result.answer) - 1)
-        return count
+            # self.knowrob.assert_confidence(facing_id, confidence)
+        # count = max(0, len(result.answer) - 1)
+        return count, predicted, expected
 
-    def see(self, depth, width, height):
-        q = {'detect': {'pose': ''}}
+    def add_gtin_checksum(self, gtin):
+        s = int(gtin[0])*1 + \
+               int(gtin[1])*3 + \
+               int(gtin[2])*1 + \
+               int(gtin[3])*3 + \
+               int(gtin[4])*1 + \
+               int(gtin[5])*3 + \
+               int(gtin[6])*1 + \
+               int(gtin[7])*3 + \
+               int(gtin[8])*1 + \
+               int(gtin[9])*3 + \
+               int(gtin[10])*1 + \
+               int(gtin[11])*3
+        return gtin+str(((s//10)+1) * 10 - s)
+
+
+    def see(self, depth, width, height, object_type, num_detections=3):
+        """
+        BaleaReinigungsmilchVital:1
+        DenkMitGeschirrReinigerNature:2
+        DMRoteBeteSaftBio:3
+        GarnierMineralUltraDry:4
+
+        :param depth:
+        :param width:
+        :param height:
+        :return: PoseStamped
+        """
+        q = {'detect': {'type': object_type}}
         self.print_with_prefix('sending: {}'.format(q))
         req = RSQueryServiceRequest()
         req.query = json.dumps(q)
+        # result = self.robosherlock_service.call(req)
+        pass
         rospy.sleep(0.4)
         objects = []
         expected_volume = self.volume(depth, width, height)
-        while len(objects) < 5:
+        while len(objects) < num_detections:
             result = self.robosherlock_service.call(req)
             answers = [json.loads(x) for x in result.answer]
-            if not answers:
+            if len(answers) == 0:
                 continue
-            real_object = min(answers, key=lambda x: abs(self.answer_volume(x) - expected_volume))
-            if abs(1-self.answer_front_area(real_object) / (width * height)) > 0.3:#175: # reject if more than x% diff
+            real_object = DetectedObject(answers[0])
+            # real_object = min(answers, key=lambda x: abs(self.answer_volume(x) - expected_volume))
+            if abs(1 - real_object.volume / expected_volume) > 0.2:  # 175: # reject if more than x% diff
                 continue
-            try:
-                pose = message_converter.convert_dictionary_to_ros_message('geometry_msgs/PoseStamped',
-                                                                           real_object['poses'][0]['pose_stamped'])
-            except:
-                continue
-            pose.pose.position.z += real_object['boundingbox']['dimensions-3D']['height']/2.
-            objects.append(pose)
+            # pose.pose.position.z += real_object['boundingbox']['dimensions-3D']['height']/2.
+            objects.append(real_object)
             self.print_with_prefix('found pose number {}'.format(len(objects)))
         objects = self.filter_outlier(objects)
-        p = self.avg_pose(objects)
+        avg_object = self.avg_object(objects)
         # p.pose.position.z += depth/2.
-        return transform_pose('map', p)
+        avg_object.map_T_object = transform_pose('map', avg_object.camera_T_object)
+        avg_object.fix_dimensions(depth, width, height)
+        return avg_object
 
-    def avg_pose(self, poses):
-        avg_position = np.array([np.array([p.pose.position.x,
-                                           p.pose.position.y,
-                                           p.pose.position.z]) for p in poses]).mean(axis=0)
-        avg_orientation = np.array([np.array([p.pose.orientation.x,
-                                              p.pose.orientation.y,
-                                              p.pose.orientation.z,
-                                              p.pose.orientation.w]) for p in poses]).mean(axis=0)
+    def avg_object(self, objects):
+        avg_position = np.array([np.array([p.camera_T_object.pose.position.x,
+                                           p.camera_T_object.pose.position.y,
+                                           p.camera_T_object.pose.position.z]) for p in objects]).mean(axis=0)
+        avg_orientation = np.array([np.array([p.camera_T_object.pose.orientation.x,
+                                              p.camera_T_object.pose.orientation.y,
+                                              p.camera_T_object.pose.orientation.z,
+                                              p.camera_T_object.pose.orientation.w]) for p in objects]).mean(axis=0)
         avg_orientation = avg_orientation / np.linalg.norm(avg_orientation)
         avg = PoseStamped()
-        avg.header.frame_id = poses[0].header.frame_id
+        avg.header.frame_id = objects[0].camera_T_object.header.frame_id
         avg.pose.position = Point(*avg_position)
         avg.pose.orientation = Quaternion(*avg_orientation)
-        return avg
+        avg_object = DetectedObject(depth=np.average([o.depth for o in objects]),
+                                    width=np.average([o.width for o in objects]),
+                                    height=np.average([o.height for o in objects]),
+                                    camera_T_object=avg)
+        return avg_object
 
     def filter_outlier(self, objects, threshold=0.0007):
-        positions = np.array([np.array([p.pose.position.x, p.pose.position.y, p.pose.position.z]) for p in objects])
+        positions = np.array([np.array([p.camera_T_object.pose.position.x,
+                                        p.camera_T_object.pose.position.y,
+                                        p.camera_T_object.pose.position.z]) for p in objects])
         avg = positions.mean(axis=0)
         return [x for i, x in enumerate(objects) if np.linalg.norm(positions[i] - avg) > threshold]
 
@@ -387,3 +483,8 @@ class RoboSherlock(FakeRoboSherlock):
     def volume(self, depth, width, height):
         return depth * width * height
 
+
+if __name__ == '__main__':
+    rospy.init_node('roboscafsdafsdf')
+    robosherlock = RoboSherlock(None, check_camera=False)
+    robosherlock.see(0, 0, 0)

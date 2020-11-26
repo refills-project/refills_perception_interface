@@ -12,7 +12,6 @@ from tf.transformations import quaternion_about_axis
 from tf2_geometry_msgs import do_transform_pose
 from visualization_msgs.msg import MarkerArray
 
-from refills_perception_interface.knowrob_wrapper import KnowRob
 from refills_perception_interface.tfwrapper import transform_pose, lookup_pose, lookup_transform
 from refills_perception_interface.utils import print_with_prefix
 
@@ -29,7 +28,7 @@ class SeparatorClustering(object):
         self.map_frame_id = 'map'
         self.separator_maker_color = ColorRGBA(.8, .8, .8, .8)
         self.separator_maker_scale = Vector3(.01, .5, .05)
-        self.min_samples = 4
+        self.min_samples = 2
         self.max_dist = 0.02
         self.hanging = False
         self.listen = False
