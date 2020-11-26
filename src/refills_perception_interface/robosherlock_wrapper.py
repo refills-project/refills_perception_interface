@@ -7,6 +7,8 @@ import rospy
 from geometry_msgs.msg import PoseStamped, Point, Quaternion
 from robosherlock_msgs.srv import RSQueryService, RSQueryServiceRequest
 from rospy import ROSException
+
+from kineverse.utils import deepcopy
 from rospy_message_converter import message_converter
 
 from refills_perception_interface.barcode_detection import BarcodeDetector
@@ -216,6 +218,19 @@ class RoboSherlock(FakeRoboSherlock):
 
     def stop_separator_detection(self, frame_id):
         return self.separator_detection.stop_listening()
+
+    def add_separators(self, separators, ys):
+        s = separators[0]
+        for y in ys:
+            new_s = deepcopy(s) #type: PoseStamped
+            new_s.pose.position.y += y
+            separators.append(new_s)
+        separators = sorted(separators, key=lambda x: x.pose.position.z)
+        return separators
+
+    def add_layers(self, layers, heights):
+        layers.extend(heights)
+        return sorted(layers)
 
     def start_barcode_detection(self, floor_id):
         self.set_ring_light(True)

@@ -11,6 +11,7 @@ class DetectFacingsBehavior(PerceptionBehavior):
         """
         :type goal: DetectFacingsGoal
         """
+        self.goal_for_hacks = goal
         print_with_prefix('started', self.prefix)
         result = DetectFacingsResult()
         if not self.get_knowrob().shelf_layer_exists(goal.id):
