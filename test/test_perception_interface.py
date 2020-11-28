@@ -295,6 +295,7 @@ class InterfaceWrapper(object):
         if self.move:
             for posture in fbp.postures:  # type: FullBodyPosture
                 self.execute_full_body_posture(posture)
+                print(str(posture.tag))
                 rospy.sleep(sleep)
 
     def move_camera_footprint(self, goal_pose):
