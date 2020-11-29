@@ -630,27 +630,64 @@ class TestPerceptionInterface(object):
         top_level_start = time.time()
         # for each shelf
         for shelf_id in shelf_ids:
+            # Create action for each shelf
+            state["shelve_iri"] = shelf_id
             state["parent_act_iri"] = top_level_action
+            interface.query_logging("create_action",state)
+            shelf_level_action = state["parent_act_iri"]
+            shelf_level_start = time.time()
+            # Move arm in parking mode
             if interface.move:
                 state["begin_act"] = time.time()
                 interface.giskard.drive_pose()
                 state["end_act"] = time.time()
                 interface.query_logging("park_arm", state)
+            # actions for each shelf
+            state["parent_act_iri"] = shelf_level_action
             path = interface.query_detect_shelf_layers_path(shelf_id)
             interface.detect_shelf_layers_with_logging(shelf_id, path, interface, state)
             layers = interface.query_shelf_layers(shelf_id)
             for layer_id in layers:
+                # create action for each layer
+                state["shelve_floor_iri"] = layer_id
+                state["parent_act_iri"] = shelf_level_action
+                interface.query_logging("create_action",state)
+                layer_level_action = state["parent_act_iri"]
+                layer_level_start = time.time()
+                # detect facings
                 path = interface.query_detect_facings_path(layer_id)
                 interface.detect_facings_with_logging(layer_id, path, interface, state)
                 facings = interface.query_facings(layer_id)
                 for facing_id in facings:
+                    # create action for each facing
+                    state["shelve_facing_iri"] = facing_id
+                    interface.query_logging("create_action",state)
+                    facing_level_action = state["parent_act_iri"]
+                    facing_level_start = time.time()
+                    # count
                     posture = interface.query_count_products_posture(facing_id)
                     interface.execute_full_body_posture(posture)
                     count = interface.count_products(facing_id)
+                    # Assert facts to facing level logging
+                    state["end_act"] = time.time()
+                    state["begin_act"] = facing_level_start
+                    state["act_iri"] = facing_level_action
+                    interface.query_logging("for_each_facing",state)
+                # Assert facts to layer level logging
+                state["end_act"] = time.time()
+                state["begin_act"] = layer_level_start
+                state["act_iri"] = layer_level_action
+                interface.query_logging("for_each_floor",state)
+            # Assert facts to shelf level logging
+            state["end_act"] = time.time()
+            state["begin_act"] = shelf_level_start
+            state["act_iri"] = shelf_level_action
+            interface.query_logging("for_each_shelf", state)
         if interface.move:
             state["begin_act"] = time.time()
             interface.giskard.drive_pose()
             state["end_act"] = time.time()
+            state["parent_act_iri"] = top_level_action
             interface.query_logging("park_arm", state)
         # Assert facts to top level action
         state["end_act"] = time.time()

@@ -221,16 +221,16 @@ class QueryBehavior(MyBahaviour):
         # a
         elif data.tag == "park_arm":
             solutions = kr.neem_park_arm(data.robot_arm_iri, data.robot_iri, data.begin_act, data.end_act, data.parent_act_iri)
-            r.parent_act_iri = solutions['Act'].replace('\'', '')
+            # r.parent_act_iri = solutions['Act'].replace('\'', '')
             r.error = QueryLoggingResponse.SUCCESS
         # b
-        elif data.tag == "navigate_to_shelf":
+        elif data.tag == "navigate_to_shelf_row":
             solutions = kr.neem_navigate_to_shelf(data.shelve_row_iri, data.robot_iri, data.begin_act, data.end_act, data.parent_act_iri)
             r.parent_act_iri = solutions['Act'].replace('\'', '')
             r.error = QueryLoggingResponse.SUCCESS
         # c
         elif data.tag == "for_each_shelf":
-            solutions = kr.neem_for_shelf(data.shelve_iri, data.robot_iri, data.begin_act, data.end_act)
+            solutions = kr.neem_for_shelf(data.act_iri, data.shelve_iri, data.robot_iri, data.begin_act, data.end_act, data.parent_act_iri)
             r.parent_act_iri = solutions['Act'].replace('\'', '')
             r.error = QueryLoggingResponse.SUCCESS
         # c1, d2
@@ -245,7 +245,7 @@ class QueryBehavior(MyBahaviour):
             r.error = QueryLoggingResponse.SUCCESS
         # c3
         elif data.tag == "navigate_to_middle_of_shelf":
-            solutions = kr.neem_navigate_to_middle_of_shelf(data.shelve_row_iri, data.robot_iri, data.begin_act, data.end_act, data.parent_act_iri)
+            solutions = kr.neem_navigate_to_middle_of_shelf(data.shelve_iri, data.robot_iri, data.begin_act, data.end_act, data.parent_act_iri)
             r.parent_act_iri = solutions['Act'].replace('\'', '')
             r.error = QueryLoggingResponse.SUCCESS
         # c4
@@ -255,7 +255,7 @@ class QueryBehavior(MyBahaviour):
             r.error = QueryLoggingResponse.SUCCESS
         # d
         elif data.tag == "for_each_floor":
-            solutions = kr.neem_for_shelf(data.shelve_floor_iri, data.robot_iri, data.begin_act, data.end_act)
+            solutions = kr.neem_for_shelf(data.act_iri, data.shelve_floor_iri, data.robot_iri, data.begin_act, data.end_act, data.parent_act_iri)
             r.parent_act_iri = solutions['Act'].replace('\'', '')
             r.error = QueryLoggingResponse.SUCCESS
         # d1, e1
@@ -270,11 +270,11 @@ class QueryBehavior(MyBahaviour):
             r.error = QueryLoggingResponse.SUCCESS
         # e
         elif data.tag == "for_each_facing":
-            solutions = kr.neem_for_shelf(data.shelve_facing_iri, data.robot_iri, data.begin_act, data.end_act)
+            solutions = kr.neem_for_shelf(data.act_iri, data.shelve_facing_iri, data.robot_iri, data.begin_act, data.end_act, data.parent_act_iri)
             r.parent_act_iri = solutions['Act'].replace('\'', '')
             r.error = QueryLoggingResponse.SUCCESS
         # e2
-        elif data.tag == "navigate_front_facing": 
+        elif data.tag == "navigate_front_facing_left" or data.tag == "navigate_front_facing_right": 
             solutions = kr.neem_navigate_aliong_shelf(data.shelve_facing_iri, data.robot_iri, data.begin_act, data.end_act, data.parent_act_iri)
             r.parent_act_iri = solutions['Act'].replace('\'', '')
             r.error = QueryLoggingResponse.SUCCESS
