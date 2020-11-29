@@ -11,7 +11,7 @@ from refills_msgs.srv import QueryShelfLayersResponse, QueryShelfLayersRequest, 
     FinishPerceptionRequest, FinishPerceptionResponse, QueryFacings, QueryFacingsResponse, QueryFacingsRequest, \
     QueryDetectShelfLayersPath, QueryDetectFacingsPath, QueryCountProductsPosture, QueryDetectShelfLayersPathResponse, \
     QueryDetectShelfLayersPathRequest, QueryDetectFacingsPathResponse, QueryDetectFacingsPathRequest, \
-    QueryCountProductsPostureResponse, QueryCountProductsPostureRequest
+    QueryCountProductsPostureResponse, QueryCountProductsPostureRequest, QueryLogging
 from refills_msgs.srv import QueryShelfSystems, QueryShelfSystemsRequest, QueryShelfLayers
 from refills_msgs.srv import QueryShelfSystemsResponse
 from geometry_msgs.msg import PoseStamped
@@ -104,6 +104,10 @@ class InterfaceWrapper(object):
             DummyInterfaceNodeName + '/query_detect_facings_path',
             QueryDetectFacingsPath)
         self.query_product_counting_path_srv = rospy.ServiceProxy(
+            DummyInterfaceNodeName + '/query_logging',
+            QueryLogging)
+
+        self.query_logging_srv = rospy.ServiceProxy(
             DummyInterfaceNodeName + '/query_count_products_posture',
             QueryCountProductsPosture)
 
@@ -185,7 +189,7 @@ class InterfaceWrapper(object):
         :param expected_error:
         :rtype: ErrorType
         """
-        r = self.query_product_counting_path_srv.call(QueryLoggingRequest(tag=current_tag,
+        r = self.query_logging_srv.call(QueryLoggingRequest(tag=current_tag,
                 robot_iri=current_state['robot_iri'], robot_arm_iri=current_state['robot_arm_iri'], 
                 store_iri=current_state['store_iri'], shelve_iri=current_state['shelve_iri'], 
                 shelve_row_iri=current_state['shelve_row_iri'], shelve_facing_iri=current_state['shelve_facing_iri'],
