@@ -190,7 +190,7 @@ class InterfaceWrapper(object):
                 store_iri=current_state['store_iri'], shelve_iri=current_state['shelve_iri'], 
                 shelve_row_iri=current_state['shelve_row_iri'], shelve_facing_iri=current_state['shelve_facing_iri'],
                 shelve_floor_iri=current_state['shelve_floor_iri'], begin_act=current_state['begin_act'], 
-                end_act=current_state['end_act'], episode_iri=current_state['episode_iri'],
+                end_act=current_state['end_act'], episode_iri=current_state['episode_iri'],act_iri=current_state["act_iri"],
                 parent_act_iri=current_state['parent_act_iri']))
         if r.robot_iri != "":
             current_state["robot_iri"] = r.robot_iri
@@ -212,6 +212,8 @@ class InterfaceWrapper(object):
             current_state["end_act"] = r.end_act
         if r.episode_iri != "":
             current_state["episode_iri"] = r.episode_iri
+        if r.act_iri != "":
+            current_state["act_iri"] = r.act_iri
         if r.parent_act_iri != "":
             current_state["parent_act_iri"] = r.parent_act_iri
         return r.error
@@ -602,16 +604,24 @@ class TestPerceptionInterface(object):
             "begin_act" : 0.0,
             "end_act" : 0.0,
             "episode_iri" : "",
+            "act_iri" : "",
             "parent_act_iri" : ""
         }
         shelf_ids = interface.query_shelf_systems()
+        # Initialize neem
         interface.query_logging("initialize",state)
+        # Create top level action
+        interface.query_logging("create_action",state)
+        top_level_action = state["parent_act_iri"]
+        top_level_start = time.time()
+        # for each shelf
         for shelf_id in shelf_ids:
+            state["parent_act_iri"] = top_level_action
             if interface.move:
                 state["begin_act"] = time.time()
                 interface.giskard.drive_pose()
                 state["end_act"] = time.time()
-                interface.query_logging("stocktaking", state)
+                interface.query_logging("park_arm", state)
             path = interface.query_detect_shelf_layers_path(shelf_id)
             interface.detect_shelf_layers_with_logging(shelf_id, path, interface, state)
             layers = interface.query_shelf_layers(shelf_id)
@@ -624,7 +634,15 @@ class TestPerceptionInterface(object):
                     interface.execute_full_body_posture(posture)
                     count = interface.count_products(facing_id)
         if interface.move:
+            state["begin_act"] = time.time()
             interface.giskard.drive_pose()
+            state["end_act"] = time.time()
+            interface.query_logging("park_arm", state)
+        # Assert facts to top level action
+        state["end_act"] = time.time()
+        state["begin_act"] = top_level_start
+        state["act_iri"] = top_level_action
+        interface.query_logging("stocktaking",state)
 
     def test_shop_scan_no_counting(self, interface):
         """

@@ -203,12 +203,16 @@ class QueryBehavior(MyBahaviour):
         print_with_prefix('called', 'query_logging')
         kr = get_knowrob()
         r = QueryLoggingResponse()
+        if data.tag == "create_action":
+            solutions = kr.neem_create_action(data.robot_iri, data.store_iri)
+            r.parent_act_iri = solutions['Act'].replace('\'', '')
+            r.error = QueryLoggingResponse.SUCCESS
         if data.tag == "initialize":
             solutions = kr.neem_init(data.robot_iri, data.store_iri)
             r.episode_iri = solutions['Episode'].replace('\'', '')
             r.error = QueryLoggingResponse.SUCCESS
         elif data.tag == "stocktaking":
-            solutions = kr.neem_stocktacking(data.store_iri, data.robot_iri, data.begin_act, data.end_act, data.episode_iri)
+            solutions = kr.neem_stocktacking(data.act_iri, data.store_iri, data.robot_iri, data.begin_act, data.end_act, data.episode_iri)
             r.parent_act_iri = solutions['Act'].replace('\'', '')
             r.error = QueryLoggingResponse.SUCCESS
         # a
