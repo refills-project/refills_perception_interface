@@ -186,10 +186,11 @@ class InterfaceWrapper(object):
         :rtype: ErrorType
         """
         r = self.query_product_counting_path_srv.call(QueryLoggingRequest(tag=current_tag,
-                robot_iri=state.robot_iri, robot_arm_iri=state.robot_arm_iri, store_iri=state.store_iri,
-                shelve_iri=state.shelve_iri, shelve_row_iri=state.shelve_row_iri, shelve_floor_iri=state.shelve_floor_iri,
-                begin_act=state.begin_act, end_act=state.end_act, episode_iri=state.episode_iri,
-                parent_act_iri=state.parent_act_iri))
+                robot_iri=current_state.robot_iri, robot_arm_iri=current_state.robot_arm_iri, 
+                store_iri=current_state.store_iri, shelve_iri=current_state.shelve_iri, 
+                shelve_row_iri=current_state.shelve_row_iri, shelve_floor_iri=current_state.shelve_floor_iri,
+                begin_act=current_state.begin_act, end_act=current_state.end_act, episode_iri=current_state.episode_iri,
+                parent_act_iri=current_state.parent_act_iri))
         return r.error
 
     def query_reset_belief_state(self):
