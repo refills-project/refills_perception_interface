@@ -20,7 +20,6 @@ class QueryBehavior(MyBahaviour):
     """
     Behavior that handles all the queries.
     """
-
     prefix = 'query_behavior'
     def __init__(self, name=""):
         self.lock = Lock()
@@ -191,6 +190,57 @@ class QueryBehavior(MyBahaviour):
             # except:
             #     rospy.logerr('path error')
 
+        else:
+            r.error = QueryCountProductsPostureResponse.INVALID_ID
+        self.wait_for_update()
+        return r
+
+    def query_neem_logging(self, data):
+        """
+        :type data: QueryLoggingRequest
+        :rtype: QueryLoggingResponse
+        """
+        print_with_prefix('called', 'query_logging')
+        kr = get_knowrob()
+        r = QueryLoggingResponse()
+        if data.tag == "initialize":
+            if kr.neem_init(data.robot_iri, data.store_iri):
+                r.error = QueryCountProductsPostureResponse.SUCCESS
+        elif data.tag == "stocktaking":
+            if kr.neem_stocktacking(data.store_iri, data.robot_iri, data.begin_act, data.end_act, data.episode_iri):
+                r.error = QueryCountProductsPostureResponse.SUCCESS
+        # a
+        elif data.tag == "park_arm":
+            if kr.neem_park_arm(data.robot_arm_iri, data.robot_iri, data.begin_act, data.end_act, data.parent_act_iri):
+                r.error = QueryCountProductsPostureResponse.SUCCESS
+        # b, c1, d2
+        elif data.tag == "navigate_to_shelf":
+            if kr.neem_navigate_to_shelf(data.shelve_row_iri, data.robot_iri, data.begin_act, data.end_act, data.parent_act_iri):
+                r.error = QueryCountProductsPostureResponse.SUCCESS
+        # c, d, e
+        elif data.tag == "for_shelf":
+            if kr.neem_for_shelf(data.shelve_iri, data.robot_iri, data.begin_act, data.end_act):
+                r.error = QueryCountProductsPostureResponse.SUCCESS
+        # c2     
+        elif data.tag == "camera_initial_scan_pose":
+            if kr.neem_camera_initial_scan_pose(data.robot_arm_iri, data.robot_iri, data.begin_act, data.end_act, data.parent_act_iri):
+                r.error = QueryCountProductsPostureResponse.SUCCESS
+        # c3
+        elif data.tag == "navigate_to_middle_of_shelf":
+            if kr.neem_navigate_to_middle_of_shelf(data.shelve_row_iri, data.robot_iri, data.begin_act, data.end_act, data.parent_act_iri):
+                r.error = QueryCountProductsPostureResponse.SUCCESS
+        # c4
+        elif data.tag == "move_camera_top_to_bottom":
+            if kr.neem_move_camera_top_to_bottom(data.shelve_iri, data.robot_iri, data.begin_act, data.end_act, data.parent_act_iri):
+                r.error = QueryCountProductsPostureResponse.SUCCESS
+        # d1, e1
+        elif data.tag == "position_camera_floor":
+            if kr.neem_position_camera_floor(data.robot_arm_iri, data.robot_iri, data.begin_act, data.end_act, data.parent_act_iri):
+                r.error = QueryCountProductsPostureResponse.SUCCESS
+        # d3, e2
+        elif data.tag == "navigate_aliong_shelf": 
+            if kr.neem_navigate_aliong_shelf(data.shelve_floor_iri, data.robot_iri, data.begin_act, data.end_act, data.parent_act_iri):
+                r.error = QueryCountProductsPostureResponse.SUCCESS
         else:
             r.error = QueryCountProductsPostureResponse.INVALID_ID
         self.wait_for_update()
