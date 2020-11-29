@@ -608,9 +608,9 @@ class TestPerceptionInterface(object):
         :return:
         """
         state = {
-            "robot_iri" : "",
-            "robot_arm_iri": "",
-            "store_iri" : "",
+            "robot_iri" : "http://knowrob.org/kb/IIWA.owl#IIWA_0",
+            "robot_arm_iri": "http://knowrob.org/kb/IIWA.owl#IIWAArm_0",
+            "store_iri" : "http://knowrob.org/kb/iai-shop.owl#IAIShop_0",
             "shelve_iri" : "",
             "shelve_row_iri" : "",
             "shelve_floor_iri" : "",
