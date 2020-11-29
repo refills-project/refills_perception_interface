@@ -204,59 +204,73 @@ class QueryBehavior(MyBahaviour):
         kr = get_knowrob()
         r = QueryLoggingResponse()
         if data.tag == "initialize":
-            if kr.neem_init(data.robot_iri, data.store_iri):
-                r.error = QueryLoggingResponse.SUCCESS
+            solutions = kr.neem_init(data.robot_iri, data.store_iri)
+            r.episode_iri = solutions['Episode'].replace('\'', '')
+            r.error = QueryLoggingResponse.SUCCESS
         elif data.tag == "stocktaking":
-            if kr.neem_stocktacking(data.store_iri, data.robot_iri, data.begin_act, data.end_act, data.episode_iri):
-                r.error = QueryLoggingResponse.SUCCESS
+            solutions = kr.neem_stocktacking(data.store_iri, data.robot_iri, data.begin_act, data.end_act, data.episode_iri)
+            r.parent_act_iri = solutions['Act'].replace('\'', '')
+            r.error = QueryLoggingResponse.SUCCESS
         # a
         elif data.tag == "park_arm":
-            if kr.neem_park_arm(data.robot_arm_iri, data.robot_iri, data.begin_act, data.end_act, data.parent_act_iri):
-                r.error = QueryLoggingResponse.SUCCESS
+            solutions = kr.neem_park_arm(data.robot_arm_iri, data.robot_iri, data.begin_act, data.end_act, data.parent_act_iri)
+            r.parent_act_iri = solutions['Act'].replace('\'', '')
+            r.error = QueryLoggingResponse.SUCCESS
         # b
         elif data.tag == "navigate_to_shelf":
-            if kr.neem_navigate_to_shelf(data.shelve_row_iri, data.robot_iri, data.begin_act, data.end_act, data.parent_act_iri):
-                r.error = QueryLoggingResponse.SUCCESS
+            solutions = kr.neem_navigate_to_shelf(data.shelve_row_iri, data.robot_iri, data.begin_act, data.end_act, data.parent_act_iri)
+            r.parent_act_iri = solutions['Act'].replace('\'', '')
+            r.error = QueryLoggingResponse.SUCCESS
         # c
         elif data.tag == "for_each_shelf":
-            if kr.neem_for_shelf(data.shelve_iri, data.robot_iri, data.begin_act, data.end_act):
-                r.error = QueryLoggingResponse.SUCCESS
+            solutions = kr.neem_for_shelf(data.shelve_iri, data.robot_iri, data.begin_act, data.end_act)
+            r.parent_act_iri = solutions['Act'].replace('\'', '')
+            r.error = QueryLoggingResponse.SUCCESS
         # c1, d2
         elif data.tag == "navigate_to_shelf":
-            if kr.neem_navigate_to_shelf(data.shelve_iri, data.robot_iri, data.begin_act, data.end_act, data.parent_act_iri):
-                r.error = QueryLoggingResponse.SUCCESS
+            solutions = kr.neem_navigate_to_shelf(data.shelve_iri, data.robot_iri, data.begin_act, data.end_act, data.parent_act_iri)
+            r.parent_act_iri = solutions['Act'].replace('\'', '')
+            r.error = QueryLoggingResponse.SUCCESS
         # c2     
         elif data.tag == "camera_initial_scan_pose":
-            if kr.neem_camera_initial_scan_pose(data.robot_arm_iri, data.robot_iri, data.begin_act, data.end_act, data.parent_act_iri):
-                r.error = QueryLoggingResponse.SUCCESS
+            solutions = kr.neem_camera_initial_scan_pose(data.robot_arm_iri, data.robot_iri, data.begin_act, data.end_act, data.parent_act_iri)
+            r.parent_act_iri = solutions['Act'].replace('\'', '')
+            r.error = QueryLoggingResponse.SUCCESS
         # c3
         elif data.tag == "navigate_to_middle_of_shelf":
-            if kr.neem_navigate_to_middle_of_shelf(data.shelve_row_iri, data.robot_iri, data.begin_act, data.end_act, data.parent_act_iri):
-                r.error = QueryLoggingResponse.SUCCESS
+            solutions = kr.neem_navigate_to_middle_of_shelf(data.shelve_row_iri, data.robot_iri, data.begin_act, data.end_act, data.parent_act_iri)
+            r.parent_act_iri = solutions['Act'].replace('\'', '')
+            r.error = QueryLoggingResponse.SUCCESS
         # c4
         elif data.tag == "move_camera_top_to_bottom":
-            if kr.neem_move_camera_top_to_bottom(data.shelve_iri, data.robot_iri, data.begin_act, data.end_act, data.parent_act_iri):
-                r.error = QueryLoggingResponse.SUCCESS
+            solutions = kr.neem_move_camera_top_to_bottom(data.shelve_iri, data.robot_iri, data.begin_act, data.end_act, data.parent_act_iri)
+            r.parent_act_iri = solutions['Act'].replace('\'', '')
+            r.error = QueryLoggingResponse.SUCCESS
         # d
         elif data.tag == "for_each_floor":
-            if kr.neem_for_shelf(data.shelve_floor_iri, data.robot_iri, data.begin_act, data.end_act):
-                r.error = QueryLoggingResponse.SUCCESS
+            solutions = kr.neem_for_shelf(data.shelve_floor_iri, data.robot_iri, data.begin_act, data.end_act)
+            r.parent_act_iri = solutions['Act'].replace('\'', '')
+            r.error = QueryLoggingResponse.SUCCESS
         # d1, e1
         elif data.tag == "position_camera_floor":
-            if kr.neem_position_camera_floor(data.robot_arm_iri, data.robot_iri, data.begin_act, data.end_act, data.parent_act_iri):
-                r.error = QueryLoggingResponse.SUCCESS
+            solutions = kr.neem_position_camera_floor(data.robot_arm_iri, data.robot_iri, data.begin_act, data.end_act, data.parent_act_iri)
+            r.parent_act_iri = solutions['Act'].replace('\'', '')
+            r.error = QueryLoggingResponse.SUCCESS
         # d3
         elif data.tag == "navigate_aliong_shelf": 
-            if kr.neem_navigate_aliong_shelf(data.shelve_floor_iri, data.robot_iri, data.begin_act, data.end_act, data.parent_act_iri):
-                r.error = QueryLoggingResponse.SUCCESS
+            solutions = kr.neem_navigate_aliong_shelf(data.shelve_floor_iri, data.robot_iri, data.begin_act, data.end_act, data.parent_act_iri)
+            r.parent_act_iri = solutions['Act'].replace('\'', '')
+            r.error = QueryLoggingResponse.SUCCESS
         # e
         elif data.tag == "for_each_facing":
-            if kr.neem_for_shelf(data.shelve_facing_iri, data.robot_iri, data.begin_act, data.end_act):
-                r.error = QueryLoggingResponse.SUCCESS
+            solutions = kr.neem_for_shelf(data.shelve_facing_iri, data.robot_iri, data.begin_act, data.end_act)
+            r.parent_act_iri = solutions['Act'].replace('\'', '')
+            r.error = QueryLoggingResponse.SUCCESS
         # e2
         elif data.tag == "navigate_front_facing": 
-            if kr.neem_navigate_aliong_shelf(data.shelve_facing_iri, data.robot_iri, data.begin_act, data.end_act, data.parent_act_iri):
-                r.error = QueryLoggingResponse.SUCCESS
+            solutions = kr.neem_navigate_aliong_shelf(data.shelve_facing_iri, data.robot_iri, data.begin_act, data.end_act, data.parent_act_iri)
+            r.parent_act_iri = solutions['Act'].replace('\'', '')
+            r.error = QueryLoggingResponse.SUCCESS
         else:
             r.error = QueryLoggingResponse.INVALID_ID
         self.wait_for_update()

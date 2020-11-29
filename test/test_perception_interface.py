@@ -192,6 +192,28 @@ class InterfaceWrapper(object):
                 shelve_floor_iri=current_state['shelve_floor_iri'], begin_act=current_state['begin_act'], 
                 end_act=current_state['end_act'], episode_iri=current_state['episode_iri'],
                 parent_act_iri=current_state['parent_act_iri']))
+        if r.robot_iri != "":
+            current_state["robot_iri"] = r.robot_iri
+        if r.robot_arm_iri != "":
+            current_state["robot_arm_iri"] = r.robot_arm_iri
+        if r.store_iri != "":
+            current_state["store_iri"] = r.store_iri
+        if r.shelve_iri != "":
+            current_state["shelve_iri"] = r.shelve_iri
+        if r.shelve_row_iri != "":
+            current_state["shelve_row_iri"] = r.shelve_row_iri
+        if r.shelve_floor_iri != "":
+            current_state["shelve_floor_iri"] = r.shelve_floor_iri        
+        if r.shelve_facing_iri != "":
+            current_state["shelve_facing_iri"] = r.shelve_facing_iri
+        if r.begin_act > 0:
+            current_state["begin_act"] = r.begin_act
+        if r.end_act > 0:
+            current_state["end_act"] = r.end_act
+        if r.episode_iri != "":
+            current_state["episode_iri"] = r.episode_iri
+        if r.parent_act_iri != "":
+            current_state["parent_act_iri"] = r.parent_act_iri
         return r.error
 
     def query_reset_belief_state(self):
@@ -233,6 +255,18 @@ class InterfaceWrapper(object):
         assert len(r.ids) > 0
         return r.ids
 
+    def detect_shelf_layers_with_logging(self, shelf_system_id, path, interface, state):
+        self.start_detect_shelf_layers(shelf_system_id)
+        # if self.sleep:
+        #     rospy.sleep(self.sleep_amount)
+        # else:
+        if path is not None:
+            self.execute_full_body_path_with_logging(path, interface, state)
+        self.finish_perception()#
+        r = self.get_detect_shelf_layers_result()
+        assert len(r.ids) > 0
+        return r.ids
+
     def cancel_detect_shelf_layers(self):
         self.detect_shelves_ac.cancel_all_goals()
 
@@ -263,6 +297,18 @@ class InterfaceWrapper(object):
         #     rospy.sleep(self.sleep_amount)
         # else:
         self.execute_full_body_path(path)
+        rospy.sleep(3)
+        self.finish_perception()
+        r = self.get_detect_facings_result()
+        assert len(r.ids) > 0
+        return r.ids
+
+    def detect_facings_with_logging(self, layer_id, path, interface, state):
+        self.start_detect_facings(layer_id)
+        # if self.sleep:
+        #     rospy.sleep(self.sleep_amount)
+        # else:
+        self.execute_full_body_path_with_logging(path, interface, state)
         rospy.sleep(3)
         self.finish_perception()
         r = self.get_detect_facings_result()
@@ -304,14 +350,23 @@ class InterfaceWrapper(object):
              'Torso_rot_1': 'torso_rot_1'}
         return d[joint_name]
 
-    def execute_full_body_path(self, fbp, sleep=0):
+    def execute_full_body_path(self, fbp,sleep=0):
         """
         :type fbp: FullBodyPath
         """
         if self.move:
             for posture in fbp.postures:  # type: FullBodyPosture
                 self.execute_full_body_posture(posture)
-                print(str(posture.tag))
+                rospy.sleep(sleep)
+
+    def execute_full_body_path_with_logging(self, fbp, interface, state,sleep=0):
+        """
+        :type fbp: FullBodyPath
+        """
+        if self.move:
+            for posture in fbp.postures:  # type: FullBodyPosture
+                self.execute_full_body_posture(posture)
+                interface.query_logging(self, posture.tag, state)
                 rospy.sleep(sleep)
 
     def move_camera_footprint(self, goal_pose):
@@ -537,7 +592,6 @@ class TestPerceptionInterface(object):
         :return:
         """
         state = {
-            "tag" : "",
             "robot_iri" : "",
             "robot_arm_iri": "",
             "store_iri" : "",
@@ -551,15 +605,19 @@ class TestPerceptionInterface(object):
             "parent_act_iri" : ""
         }
         shelf_ids = interface.query_shelf_systems()
+        interface.query_logging("initialize",state)
         for shelf_id in shelf_ids:
             if interface.move:
+                state["begin_act"] = time.time()
                 interface.giskard.drive_pose()
+                state["end_act"] = time.time()
+                interface.query_logging("stocktaking", state)
             path = interface.query_detect_shelf_layers_path(shelf_id)
-            interface.detect_shelf_layers(shelf_id, path)
+            interface.detect_shelf_layers_with_logging(shelf_id, path, interface, state)
             layers = interface.query_shelf_layers(shelf_id)
             for layer_id in layers:
                 path = interface.query_detect_facings_path(layer_id)
-                interface.detect_facings(layer_id, path)
+                interface.detect_facings_with_logging(layer_id, path, interface, state)
                 facings = interface.query_facings(layer_id)
                 for facing_id in facings:
                     posture = interface.query_count_products_posture(facing_id)
