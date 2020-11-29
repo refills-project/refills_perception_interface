@@ -186,12 +186,12 @@ class InterfaceWrapper(object):
         :rtype: ErrorType
         """
         r = self.query_product_counting_path_srv.call(QueryLoggingRequest(tag=current_tag,
-                robot_iri=current_state.robot_iri, robot_arm_iri=current_state.robot_arm_iri, 
-                store_iri=current_state.store_iri, shelve_iri=current_state.shelve_iri, 
-                shelve_row_iri=current_state.shelve_row_iri, shelve_facing_iri=current_state.shelve_facing_iri,
-                shelve_floor_iri=current_state.shelve_floor_iri, begin_act=current_state.begin_act, 
-                end_act=current_state.end_act, episode_iri=current_state.episode_iri,
-                parent_act_iri=current_state.parent_act_iri))
+                robot_iri=current_state['robot_iri'], robot_arm_iri=current_state['robot_arm_iri'], 
+                store_iri=current_state['store_iri'], shelve_iri=current_state['shelve_iri'], 
+                shelve_row_iri=current_state['shelve_row_iri'], shelve_facing_iri=current_state['shelve_facing_iri'],
+                shelve_floor_iri=current_state['shelve_floor_iri'], begin_act=current_state['begin_act'], 
+                end_act=current_state['end_act'], episode_iri=current_state['episode_iri'],
+                parent_act_iri=current_state['parent_act_iri']))
         return r.error
 
     def query_reset_belief_state(self):
@@ -228,7 +228,7 @@ class InterfaceWrapper(object):
         # else:
         if path is not None:
             self.execute_full_body_path(path)
-        self.finish_perception()
+        self.finish_perception()#
         r = self.get_detect_shelf_layers_result()
         assert len(r.ids) > 0
         return r.ids
@@ -536,6 +536,20 @@ class TestPerceptionInterface(object):
         :type interface: InterfaceWrapper
         :return:
         """
+        state = {
+            "tag" : "",
+            "robot_iri" : "",
+            "robot_arm_iri": "",
+            "store_iri" : "",
+            "shelve_iri" : "",
+            "shelve_row_iri" : "",
+            "shelve_floor_iri" : "",
+            "shelve_facing_iri" : "",
+            "begin_act" : 0.0,
+            "end_act" : 0.0,
+            "episode_iri" : "",
+            "parent_act_iri" : ""
+        }
         shelf_ids = interface.query_shelf_systems()
         for shelf_id in shelf_ids:
             if interface.move:
