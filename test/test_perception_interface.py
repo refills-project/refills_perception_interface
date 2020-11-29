@@ -11,7 +11,7 @@ from refills_msgs.srv import QueryShelfLayersResponse, QueryShelfLayersRequest, 
     FinishPerceptionRequest, FinishPerceptionResponse, QueryFacings, QueryFacingsResponse, QueryFacingsRequest, \
     QueryDetectShelfLayersPath, QueryDetectFacingsPath, QueryCountProductsPosture, QueryDetectShelfLayersPathResponse, \
     QueryDetectShelfLayersPathRequest, QueryDetectFacingsPathResponse, QueryDetectFacingsPathRequest, \
-    QueryCountProductsPostureResponse, QueryCountProductsPostureRequest, QueryLogging
+    QueryCountProductsPostureResponse, QueryCountProductsPostureRequest, QueryLogging, QueryLoggingRequest, QueryLoggingResponse
 from refills_msgs.srv import QueryShelfSystems, QueryShelfSystemsRequest, QueryShelfLayers
 from refills_msgs.srv import QueryShelfSystemsResponse
 from geometry_msgs.msg import PoseStamped
@@ -103,11 +103,10 @@ class InterfaceWrapper(object):
         self.query_facing_detection_path_srv = rospy.ServiceProxy(
             DummyInterfaceNodeName + '/query_detect_facings_path',
             QueryDetectFacingsPath)
-        self.query_product_counting_path_srv = rospy.ServiceProxy(
+        self.query_logging_srv = rospy.ServiceProxy(
             DummyInterfaceNodeName + '/query_logging',
             QueryLogging)
-
-        self.query_logging_srv = rospy.ServiceProxy(
+        self.query_product_counting_path_srv = rospy.ServiceProxy(
             DummyInterfaceNodeName + '/query_count_products_posture',
             QueryCountProductsPosture)
 
