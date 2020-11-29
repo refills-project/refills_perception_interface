@@ -369,10 +369,20 @@ class InterfaceWrapper(object):
         """
         :type fbp: FullBodyPath
         """
+        combineActions = False
         if self.move:
             for posture in fbp.postures:  # type: FullBodyPosture
+                if not combineActions:
+                    state["begin_act"] = time.time()
                 self.execute_full_body_posture(posture)
-                interface.query_logging(self, posture.tag, state)
+                if (posture.tag == "navigate_front_facing_right" or 
+                    posture.tag == "navigate_front_facing_left") and (not combineActions):
+                    combineActions = True
+                else: 
+                    state["end"] = time.time()
+                    interface.query_logging(self, posture.tag, state)
+                    if combineActions:
+                        combineActions = False
                 rospy.sleep(sleep)
 
     def move_camera_footprint(self, goal_pose):
