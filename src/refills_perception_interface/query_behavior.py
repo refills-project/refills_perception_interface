@@ -5,7 +5,7 @@ from refills_msgs.msg import FullBodyPosture, JointPosition
 from refills_msgs.srv import QueryShelfSystems, QueryShelfLayers, QueryFacings, QueryDetectShelfLayersPath, \
     QueryDetectFacingsPath, QueryCountProductsPosture, QueryShelfSystemsResponse, QueryShelfLayersResponse, \
     QueryFacingsResponse, QueryDetectShelfLayersPathResponse, QueryDetectFacingsPathResponse, \
-    QueryCountProductsPostureResponse, QueryLogging
+    QueryCountProductsPostureResponse, QueryLogging, QueryLoggingResponse
 from geometry_msgs.msg import Point, Quaternion
 from py_trees import Status
 from std_srvs.srv import Trigger, TriggerResponse
@@ -41,10 +41,11 @@ class QueryBehavior(MyBahaviour):
                                                              self.query_detect_facings_path_cb)
         self.query_product_counting_path_srv = rospy.Service('~query_count_products_posture',
                                                              QueryCountProductsPosture,
-                                                             self.query_neem_logging)
-        self.query_logging_srv = rospy.Service('~query_logging',
-                                                             QueryLogging,
                                                              self.query_count_products_posture_cb)
+        self.query_logging_srv = rospy.Service('~query_logging',
+                                                QueryLogging,
+                                                self.query_neem_logging)
+                                                             
         self.query_reset_beliefstate_srv = rospy.Service('~reset_beliefstate', Trigger, self.query_reset_beliefstate)
 
         self.visualization_marker_pub = rospy.Publisher('visualization_marker', Marker, queue_size=10)
@@ -204,7 +205,7 @@ class QueryBehavior(MyBahaviour):
         :rtype: QueryLoggingResponse
         """
         print_with_prefix('called', 'query_logging')
-        kr = get_knowrob()
+        kr = self.get_knowrob()
         r = QueryLoggingResponse()
         if data.tag == "create_action":
             solutions = kr.neem_create_action(data.robot_iri, data.store_iri)
