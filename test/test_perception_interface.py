@@ -178,6 +178,20 @@ class InterfaceWrapper(object):
         #     assert len(r.posture.joints) > 0
         return r.posture
 
+    def query_logging(self, current_tag, current_state,expected_error=QueryLoggingResponse.SUCCESS):
+        """
+        :param current_tag:
+        :param current_state:
+        :param expected_error:
+        :rtype: ErrorType
+        """
+        r = self.query_product_counting_path_srv.call(QueryLoggingRequest(tag=current_tag,
+                robot_iri=state.robot_iri, robot_arm_iri=state.robot_arm_iri, store_iri=state.store_iri,
+                shelve_iri=state.shelve_iri, shelve_row_iri=state.shelve_row_iri, shelve_floor_iri=state.shelve_floor_iri,
+                begin_act=state.begin_act, end_act=state.end_act, episode_iri=state.episode_iri,
+                parent_act_iri=state.parent_act_iri))
+        return r.error
+
     def query_reset_belief_state(self):
         assert self.query_reset_belief_state_srv.call(TriggerRequest())
 
