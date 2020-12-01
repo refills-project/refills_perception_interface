@@ -372,14 +372,14 @@ class InterfaceWrapper(object):
         if self.move:
             for posture in fbp.postures:  # type: FullBodyPosture
                 if not combineActions:
-                    state["begin_act"] = time.time()
+                    state["begin_act"] = time()
                 self.execute_full_body_posture(posture)
                 if (posture.tag == "navigate_front_facing_right" or 
                     posture.tag == "navigate_front_facing_left") and (not combineActions):
                     combineActions = True
                 else: 
-                    state["end"] = time.time()
-                    interface.query_logging(self, posture.tag, state)
+                    state["end"] = time()
+                    interface.query_logging(posture.tag, state)
                     if combineActions:
                         combineActions = False
                 rospy.sleep(sleep)
@@ -626,7 +626,7 @@ class TestPerceptionInterface(object):
         # Create top level action
         interface.query_logging("create_action",state)
         top_level_action = state["parent_act_iri"]
-        top_level_start = time.time()
+        top_level_start = time()
         # for each shelf
         for shelf_id in shelf_ids:
             # Create action for each shelf
@@ -634,12 +634,12 @@ class TestPerceptionInterface(object):
             state["parent_act_iri"] = top_level_action
             interface.query_logging("create_action",state)
             shelf_level_action = state["parent_act_iri"]
-            shelf_level_start = time.time()
+            shelf_level_start = time()
             # Move arm in parking mode
             if interface.move:
-                state["begin_act"] = time.time()
+                state["begin_act"] = time()
                 interface.giskard.drive_pose()
-                state["end_act"] = time.time()
+                state["end_act"] = time()
                 interface.query_logging("park_arm", state)
             # actions for each shelf
             state["parent_act_iri"] = shelf_level_action
@@ -652,7 +652,7 @@ class TestPerceptionInterface(object):
                 state["parent_act_iri"] = shelf_level_action
                 interface.query_logging("create_action",state)
                 layer_level_action = state["parent_act_iri"]
-                layer_level_start = time.time()
+                layer_level_start = time()
                 # detect facings
                 path = interface.query_detect_facings_path(layer_id)
                 interface.detect_facings_with_logging(layer_id, path, interface, state)
@@ -662,34 +662,34 @@ class TestPerceptionInterface(object):
                     state["shelve_facing_iri"] = facing_id
                     interface.query_logging("create_action",state)
                     facing_level_action = state["parent_act_iri"]
-                    facing_level_start = time.time()
+                    facing_level_start = time()
                     # count
                     posture = interface.query_count_products_posture(facing_id)
                     interface.execute_full_body_posture(posture)
                     count = interface.count_products(facing_id)
                     # Assert facts to facing level logging
-                    state["end_act"] = time.time()
+                    state["end_act"] = time()
                     state["begin_act"] = facing_level_start
                     state["act_iri"] = facing_level_action
                     interface.query_logging("for_each_facing",state)
                 # Assert facts to layer level logging
-                state["end_act"] = time.time()
+                state["end_act"] = time()
                 state["begin_act"] = layer_level_start
                 state["act_iri"] = layer_level_action
                 interface.query_logging("for_each_floor",state)
             # Assert facts to shelf level logging
-            state["end_act"] = time.time()
+            state["end_act"] = time()
             state["begin_act"] = shelf_level_start
             state["act_iri"] = shelf_level_action
             interface.query_logging("for_each_shelf", state)
         if interface.move:
-            state["begin_act"] = time.time()
+            state["begin_act"] = time()
             interface.giskard.drive_pose()
-            state["end_act"] = time.time()
+            state["end_act"] = time()
             state["parent_act_iri"] = top_level_action
             interface.query_logging("park_arm", state)
         # Assert facts to top level action
-        state["end_act"] = time.time()
+        state["end_act"] = time()
         state["begin_act"] = top_level_start
         state["act_iri"] = top_level_action
         interface.query_logging("stocktaking",state)

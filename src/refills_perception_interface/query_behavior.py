@@ -208,7 +208,7 @@ class QueryBehavior(MyBahaviour):
         kr = self.get_knowrob()
         r = QueryLoggingResponse()
         if data.tag == "create_action":
-            solutions = kr.neem_create_action(data.robot_iri, data.store_iri)
+            solutions = kr.neem_create_action()
             r.parent_act_iri = solutions['Act'].replace('\'', '')
             r.error = QueryLoggingResponse.SUCCESS
         if data.tag == "initialize":
@@ -251,7 +251,7 @@ class QueryBehavior(MyBahaviour):
             r.error = QueryLoggingResponse.SUCCESS
         # c4
         elif data.tag == "move_camera_top_to_bottom":
-            solutions = kr.neem_move_camera_top_to_bottom(data.shelve_iri, data.robot_iri, data.begin_act, data.end_act, data.parent_act_iri)
+            solutions = kr.neem_move_camera_top_to_bottom(data.shelve_iri, data.robot_iri, data.robot_arm_iri, data.begin_act, data.end_act, data.parent_act_iri)
             r.parent_act_iri = solutions['Act'].replace('\'', '')
             r.error = QueryLoggingResponse.SUCCESS
         # d
