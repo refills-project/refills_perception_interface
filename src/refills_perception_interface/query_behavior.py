@@ -281,5 +281,5 @@ class QueryBehavior(MyBahaviour):
             r.error = QueryLoggingResponse.SUCCESS
         else:
             r.error = QueryLoggingResponse.INVALID_ID
-        self.wait_for_update()
+        #self.wait_for_update()
         return r

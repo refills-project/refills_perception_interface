@@ -255,7 +255,7 @@ class InterfaceWrapper(object):
         # else:
         if path is not None:
             self.execute_full_body_path(path)
-        self.finish_perception()#
+        self.finish_perception()
         r = self.get_detect_shelf_layers_result()
         assert len(r.ids) > 0
         return r.ids
@@ -267,7 +267,7 @@ class InterfaceWrapper(object):
         # else:
         if path is not None:
             self.execute_full_body_path_with_logging(path, interface, state)
-        self.finish_perception()#
+        self.finish_perception()
         r = self.get_detect_shelf_layers_result()
         assert len(r.ids) > 0
         return r.ids
