@@ -216,7 +216,7 @@ class QueryBehavior(MyBahaviour):
             r.episode_iri = solutions['Episode'].replace('\'', '')
             r.error = QueryLoggingResponse.SUCCESS
         elif data.tag == "stocktaking":
-            solutions = kr.neem_stocktacking(data.act_iri, data.store_iri, data.robot_iri, data.begin_act, data.end_act, data.episode_iri)
+            solutions = kr.neem_stocktacking(data.store_iri, data.robot_iri, data.begin_act, data.end_act, data.episode_iri)
             r.parent_act_iri = solutions['Act'].replace('\'', '')
             r.error = QueryLoggingResponse.SUCCESS
         # a
@@ -231,7 +231,7 @@ class QueryBehavior(MyBahaviour):
             r.error = QueryLoggingResponse.SUCCESS
         # c
         elif data.tag == "for_each_shelf":
-            solutions = kr.neem_for_shelf(data.act_iri, data.shelve_iri, data.robot_iri, data.begin_act, data.end_act, data.parent_act_iri)
+            solutions = kr.neem_for_shelf(data.shelve_iri, data.robot_iri, data.begin_act, data.end_act, data.parent_act_iri)
             r.parent_act_iri = solutions['Act'].replace('\'', '')
             r.error = QueryLoggingResponse.SUCCESS
         # c1, d2
@@ -256,7 +256,7 @@ class QueryBehavior(MyBahaviour):
             r.error = QueryLoggingResponse.SUCCESS
         # d
         elif data.tag == "for_each_floor":
-            solutions = kr.neem_for_shelf(data.act_iri, data.shelve_floor_iri, data.robot_iri, data.begin_act, data.end_act, data.parent_act_iri)
+            solutions = kr.neem_for_shelf(data.shelve_floor_iri, data.robot_iri, data.begin_act, data.end_act, data.parent_act_iri)
             r.parent_act_iri = solutions['Act'].replace('\'', '')
             r.error = QueryLoggingResponse.SUCCESS
         # d1, e1
@@ -271,7 +271,7 @@ class QueryBehavior(MyBahaviour):
             r.error = QueryLoggingResponse.SUCCESS
         # e
         elif data.tag == "for_each_facing":
-            solutions = kr.neem_for_shelf(data.act_iri, data.shelve_facing_iri, data.robot_iri, data.begin_act, data.end_act, data.parent_act_iri)
+            solutions = kr.neem_for_shelf(data.shelve_facing_iri, data.robot_iri, data.begin_act, data.end_act, data.parent_act_iri)
             r.parent_act_iri = solutions['Act'].replace('\'', '')
             r.error = QueryLoggingResponse.SUCCESS
         # e2
