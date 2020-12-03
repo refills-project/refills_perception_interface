@@ -161,8 +161,8 @@ class FakeRoboSherlock(object):
         # self.knowrob.assert_confidence(facing_id, 0.88)
         i = int(np.random.random() * 2)
         if i > 0:
-            return 1
-        return 0
+            return 1, None, None
+        return 0, None, None
 
     def start_detect_shelf_layers(self, shelf_system_id):
         """
