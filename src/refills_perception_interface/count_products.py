@@ -15,8 +15,8 @@ class CountProductsBehavior(PerceptionBehavior):
         result = CountProductsResult()
         if self.get_knowrob().facing_exists(goal.id):
             result.error = CountProductsResult.SUCCESS
-            result.count = self.get_robosherlock().count_product(goal.id)
-            self.get_knowrob().add_objects(goal.id, result.count)
+            result.count, predicted_gtin, expected_gtin = self.get_robosherlock().count_product(goal.id)
+            self.get_knowrob().add_objects(goal.id, result.count, expected_gtin)
             print_with_prefix('counted {} times'.format(result.count), self.prefix)
             print_with_prefix('finished', self.prefix)
             return result
