@@ -378,7 +378,7 @@ class InterfaceWrapper(object):
                     posture.tag == "navigate_front_facing_left") and (not combineActions):
                     combineActions = True
                 else: 
-                    state["end"] = time()
+                    state["end_act"] = time()
                     interface.query_logging(posture.tag, state)
                     if combineActions:
                         combineActions = False
