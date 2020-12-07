@@ -369,8 +369,10 @@ class InterfaceWrapper(object):
         :type fbp: FullBodyPath
         """
         combineActions = False
+        currentParentAct = state["parent_act_iri"]
         if self.move:
             for posture in fbp.postures:  # type: FullBodyPosture
+                state["parent_act_iri"] = currentParentAct
                 if not combineActions:
                     state["begin_act"] = time()
                 self.execute_full_body_posture(posture)
