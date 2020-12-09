@@ -531,9 +531,9 @@ class PathsKmrIiwa(Paths):
         start_base_pose.header.stamp = rospy.Time()
         end_full_body_pose = FullBodyPosture()
         end_full_body_pose.type = FullBodyPosture.CAM_FOOTPRINT
-        end_base_pose.tag = "navigate_front_facing_left"
         print("Move to left")
         end_full_body_pose.base_pos = end_base_pose
+        end_full_body_pose.tag ="navigate_front_facing_left"
 
         if self.is_left(shelf_system_id):
             full_body_path.postures.append(end_full_body_pose)

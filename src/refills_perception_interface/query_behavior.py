@@ -82,7 +82,7 @@ class QueryBehavior(MyBahaviour):
         stamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
         path = self.path + '/' + stamp
         rospy.loginfo('dumping to {}'.format(path))
-        self.get_knowrob().mongo_dump_database(path)
+        self.get_knowrob().save_neem(path)
         # m = Marker()
         # m.action = Marker.DELETEALL
         # self.visualization_marker_pub.publish(m)
@@ -270,7 +270,7 @@ class QueryBehavior(MyBahaviour):
             r.error = QueryLoggingResponse.SUCCESS
         # d3
         elif data.tag == "navigate_aliong_shelf": 
-            solutions = kr.neem_navigate_aliong_shelf(data.shelve_floor_iri, data.robot_iri, data.begin_act, data.end_act, data.parent_act_iri)
+            solutions = kr.neem_navigate_along_shelf(data.shelve_floor_iri, data.robot_iri, data.begin_act, data.end_act, data.parent_act_iri)
             r.parent_act_iri = solutions['Act'].replace('\'', '')
             r.error = QueryLoggingResponse.SUCCESS
         # e
@@ -280,7 +280,7 @@ class QueryBehavior(MyBahaviour):
             r.error = QueryLoggingResponse.SUCCESS
         # e2
         elif data.tag == "navigate_front_facing_left" or data.tag == "navigate_front_facing_right": 
-            solutions = kr.neem_navigate_aliong_shelf(data.shelve_facing_iri, data.robot_iri, data.begin_act, data.end_act, data.parent_act_iri)
+            solutions = kr.neem_navigate_along_shelf(data.shelve_facing_iri, data.robot_iri, data.begin_act, data.end_act, data.parent_act_iri)
             r.parent_act_iri = solutions['Act'].replace('\'', '')
             r.error = QueryLoggingResponse.SUCCESS
         else:
