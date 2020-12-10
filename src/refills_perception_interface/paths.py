@@ -24,7 +24,7 @@ from refills_perception_interface.utils import kdl_to_pose
 # TORSO_LIN1_UPPER_LIMIT = 0.6
 # TORSO_LIN2_UPPER_LIMIT = 1.295
 MIN_CAM_HEIGHT = 0.35
-MAX_CAM_HEIGHT = 1.35
+MAX_CAM_HEIGHT = 1.5
 
 
 # CAM_IN_BASE_LINK = 0.862
