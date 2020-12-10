@@ -431,12 +431,12 @@ class PathsKmrIiwa(Paths):
             full_body_path.postures.append(full_body_pose)
 
         # calculate base pose
-        base_pose = self.base_pose_in_front_of_shelf(shelf_system_id, shelf_system_width / 2, y=-0.85)
+        base_pose = self.base_pose_in_front_of_shelf(shelf_system_id, shelf_system_width / 2, y=-0.75)
         base_pose = transform_pose(self.knowrob.get_perceived_frame_id(shelf_system_id), base_pose)
         if self.is_left(shelf_system_id):
-            base_pose.pose.position.x -= 0.35
+            base_pose.pose.position.x -= 0.45
         else:
-            base_pose.pose.position.x += 0.35
+            base_pose.pose.position.x += 0.45
         base_pose = transform_pose('map', base_pose)
 
         full_body_pose = FullBodyPosture()

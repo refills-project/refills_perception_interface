@@ -1,14 +1,17 @@
 #!/usr/bin/env python
 from __future__ import division
+
 import functools
+
 import py_trees
 import rospy
+from py_trees import Blackboard, BehaviourTree, Sequence, Selector
 from refills_msgs.msg import DetectShelfLayersAction, DetectFacingsAction, CountProductsAction
 from refills_msgs.srv import FinishPerception, FinishPerceptionResponse
-from py_trees import Behaviour, Blackboard, Status, BehaviourTree, Sequence, Selector
+from rospy import ROSException
 
 from knowrob_refills.knowrob_wrapper import KnowRob
-from refills_perception_interface.action_server_behavior import GoalReceived, PerceptionBehavior
+from refills_perception_interface.action_server_behavior import GoalReceived
 from refills_perception_interface.count_products import CountProductsBehavior
 from refills_perception_interface.detect_facings import DetectFacingsBehavior
 from refills_perception_interface.detect_shelf_layers import DetectShelfLayersBehavior
@@ -41,8 +44,15 @@ def grow_tree(debug=True):
     b = Blackboard()
     b.finished = False
     b.lock = TimeoutLock()
-    b.knowrob = KnowRob(initial_mongo_db=rospy.get_param('~initial_beliefstate'),
-                        clear_roslog=True)
+    try:
+        rospy.wait_for_service('/rosprolog/query', timeout=3)
+        print_with_prefix('knowrob already running, not clearing it', 'perception_interface')
+        b.knowrob = KnowRob(initial_mongo_db=None,
+                            clear_roslog=False)
+    except ROSException as e:
+        print_with_prefix('knowrob not running, clearing it', 'perception_interface')
+        b.knowrob = KnowRob(initial_mongo_db=rospy.get_param('~initial_beliefstate'),
+                            clear_roslog=True)
     b.robot = rospy.get_param('~robot')
     if roboserlock_sim:
         b.robosherlock = FakeRoboSherlock(b.knowrob)

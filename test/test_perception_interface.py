@@ -475,11 +475,18 @@ class TestPerceptionInterface(object):
     def test_detect_shelf_layers(self, interface):
         shelf_systems = interface.query_shelf_systems()
         for shelf_system_id in shelf_systems:
-            interface.detect_shelf_layers(shelf_system_id, None)
+            if len(interface.kr.get_shelf_layer_from_system(shelf_system_id)) > 0:
+                continue
+            if interface.move:
+                interface.giskard.drive_pose()
+            path = interface.query_detect_shelf_layers_path(shelf_system_id)
+            interface.detect_shelf_layers(shelf_system_id, path)
             layers = interface.query_shelf_layers(shelf_system_id)
             assert len(layers) > 0
             assert layers == interface.query_shelf_layers(shelf_system_id)
             assert layers == interface.query_shelf_layers(shelf_system_id)
+        if interface.move:
+            interface.giskard.drive_pose()
 
     def test_detect_shelf_layers_without_move(self, interface_no_move):
         shelf_systems = interface_no_move.query_shelf_systems()
@@ -634,6 +641,8 @@ class TestPerceptionInterface(object):
         """
         shelf_ids = interface.query_shelf_systems()
         for shelf_id in shelf_ids:
+            if len(interface.kr.get_shelf_layer_from_system(shelf_id)) > 0:
+                continue
             if interface.move:
                 interface.giskard.drive_pose()
             path = interface.query_detect_shelf_layers_path(shelf_id)
@@ -668,6 +677,8 @@ class TestPerceptionInterface(object):
         with LogNeemStockTaking(interface.kr, store_iri, episode) as stock_tacking_parent_iri:
             # Assert facts to top level action
             for shelf_id in shelf_ids:
+                if len(interface.kr.get_shelf_layer_from_system(shelf_id)) > 0:
+                    continue
                 with LogNeemForEachShelf(interface.kr, shelf_id, stock_tacking_parent_iri) as for_each_shelf_iri:
                     # Create action for each shelf
                     # Move arm in parking mode
