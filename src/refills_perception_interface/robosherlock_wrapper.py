@@ -89,7 +89,7 @@ class FakeRoboSherlock(object):
         """
         :type floor_id: str
         """
-        self.number_of_facings = max(4, int(np.random.normal(loc=7, scale=2)))
+        self.number_of_facings = max(4, int(np.random.normal(loc=5, scale=2)))
         # self.current_shelf_layer_id = floor_id
 
     def stop_separator_detection(self, frame_id):
@@ -143,7 +143,7 @@ class FakeRoboSherlock(object):
             barcode.pose.orientation.w = 1
             barcode = transform_pose('map', barcode)
             try:
-                if np.random.choice([True]):
+                if np.random.choice([True]*9+[False]):
                     barcodes[str(self.barcodes.pop())] = barcode
                 else:
                     rnd_barcode = self.make_rnd_barcode()
