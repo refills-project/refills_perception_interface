@@ -14,6 +14,7 @@ from visualization_msgs.msg import Marker
 from refills_perception_interface.MyBehavior import MyBahaviour
 from refills_perception_interface.paths import Paths, PathsKmrIiwa
 from refills_perception_interface.utils import print_with_prefix
+from os.path import expanduser
 
 
 class QueryBehavior(MyBahaviour):
@@ -51,7 +52,8 @@ class QueryBehavior(MyBahaviour):
         self.visualization_marker_pub = rospy.Publisher('visualization_marker', Marker, queue_size=10)
 
         # self.initial_beliefstate = rospy.get_param('~initial_beliefstate')
-        self.path = '~/mongo_logs'
+        home = expanduser("~")
+        self.path = home + '/mongo_logs'
 
         return super(QueryBehavior, self).setup(timeout)
 
@@ -82,6 +84,8 @@ class QueryBehavior(MyBahaviour):
         stamp = datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
         path = self.path + '/' + stamp
         rospy.loginfo('dumping to {}'.format(path))
+        self.get_knowrob().mongo_dump_database(path)
+        path += '-neem'
         self.get_knowrob().save_neem(path)
         # m = Marker()
         # m.action = Marker.DELETEALL

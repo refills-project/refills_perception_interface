@@ -159,8 +159,7 @@ class FakeRoboSherlock(object):
         :rtype: int
         """
         # self.knowrob.assert_confidence(facing_id, 0.88)
-        i = int(np.random.random() * 2)
-        if i > 0:
+        if np.random.choice([True]*9+[False]):
             return 1, None, None
         return 0, None, None
 
