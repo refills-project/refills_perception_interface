@@ -13,6 +13,7 @@ class DetectFacingsBehavior(PerceptionBehavior):
         """
         self.goal_for_hacks = goal
         print_with_prefix('started', self.prefix)
+        self.get_robosherlock().launch_barcode_nodes()
         result = DetectFacingsResult()
         if not self.get_knowrob().shelf_layer_exists(goal.id):
             result.error = DetectFacingsResult.INVALID_ID
@@ -40,6 +41,7 @@ class DetectFacingsBehavior(PerceptionBehavior):
 
             result.ids = self.get_knowrob().get_facing_ids_from_layer(self.current_goal.id).keys()
             print_with_prefix('finished', self.prefix)
+        self.get_robosherlock().stop_barcode_nodes()
         return result
 
     def canceled(self):

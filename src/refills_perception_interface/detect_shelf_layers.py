@@ -11,6 +11,7 @@ class DetectShelfLayersBehavior(PerceptionBehavior):
         :type goal: DetectShelfLayersGoal
         """
         result = DetectShelfLayersResult()
+        self.get_robosherlock().launch_barcode_nodes()
         print_with_prefix('started', self.prefix)
         if not self.get_knowrob().shelf_system_exists(goal.id):
             result.error = DetectShelfLayersResult.INVALID_ID
@@ -32,6 +33,7 @@ class DetectShelfLayersBehavior(PerceptionBehavior):
             self.get_knowrob().add_shelf_layers(self.current_goal.id, shelf_layer_heights)
             result.ids = self.get_knowrob().get_shelf_layer_from_system(self.current_goal.id).keys()
             print_with_prefix('finished', self.prefix)
+        self.get_robosherlock().stop_barcode_nodes()
         return result
 
     def canceled(self):

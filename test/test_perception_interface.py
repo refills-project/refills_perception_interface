@@ -19,6 +19,7 @@ from refills_msgs.srv import QueryShelfSystems, QueryShelfSystemsRequest, QueryS
 from refills_msgs.srv import QueryShelfSystemsResponse
 from std_srvs.srv import Trigger, TriggerRequest
 
+from giskardpy.tfwrapper import wait_for_transform
 from knowrob_refills.knowrob_wrapper import KnowRob, LogNeemStockTaking, LogNeemForEachShelf, \
     LogNeemArmMotion, LogNeemArmMotionTwoRoles, LogNeemNavigateToMiddleOFShelf, LogNeemNavigateToShelf, \
     LogNeemNavigateAlongShelf
@@ -300,7 +301,7 @@ class InterfaceWrapper(object):
         assert self.detect_facings_ac.get_state() == expected_state
         r = self.detect_facings_ac.get_result()
         assert r.error == expected_error
-        return r
+        return
 
     def query_facings(self, layer_id, expected_error=QueryFacingsResponse.SUCCESS):
         r = self.query_facings_srv.call(QueryFacingsRequest(id=layer_id))
@@ -328,8 +329,12 @@ class InterfaceWrapper(object):
         rospy.sleep(3)
         self.finish_perception()
         r = self.get_detect_facings_result()
-        assert len(r.ids) > 0
-        return r.ids
+        if r is None:
+            ids = self.query_facings(layer_id)
+            assert len(ids) > 0
+        else:
+            ids = r.ids
+        return ids
 
     def cancel_detect_facings(self):
         self.detect_facings_ac.cancel_all_goals()
@@ -432,6 +437,7 @@ class InterfaceWrapper(object):
             if posture.type == posture.JOINT:
                 self.giskard.set_and_send_joint_goal(posture.goal_joint_state)
             if posture.type == posture.CAM_FOOTPRINT or posture.type == posture.BOTH:
+                wait_for_transform('base_link', 'camera_link', rospy.get_rostime(), rospy.Duration(5))
                 self.move_camera_footprint(posture.base_pos)
 
 
@@ -712,6 +718,41 @@ class TestPerceptionInterface(object):
                                     # Assert facts to facing level logging
                         # stop for each floor
                     # Assert facts to shelf level logging
+            if interface.move:
+                with LogNeemArmMotion(interface.kr, for_each_shelf_iri):
+                    interface.giskard.drive_pose()
+        interface.query_reset_belief_state()
+
+    def test_shop_scan_layers_neem(self, interface):
+        """
+        :type interface: InterfaceWrapper
+        :return:
+        """
+        robot_iri = "http://knowrob.org/kb/IIWA.owl#IIWA_0"
+        store_iri = "http://knowrob.org/kb/iai-shop.owl#IAIShop_0"
+        episode = interface.kr.neem_init(robot_iri=robot_iri,
+                               store_iri=store_iri)
+        # Create top level action
+        # top_level_action = state["parent_act_iri"]
+        # top_level_start = time()
+        # for each shelf
+        shelf_ids = interface.query_shelf_systems()
+        with LogNeemStockTaking(interface.kr, store_iri, episode) as stock_tacking_parent_iri:
+            # Assert facts to top level action
+            for shelf_id in shelf_ids:
+                if len(interface.kr.get_shelf_layer_from_system(shelf_id)) > 0:
+                    continue
+                with LogNeemForEachShelf(interface.kr, shelf_id, stock_tacking_parent_iri) as for_each_shelf_iri:
+                    # Create action for each shelf
+                    # Move arm in parking mode
+                    if interface.move:
+                        with LogNeemArmMotion(interface.kr, for_each_shelf_iri):
+                            interface.giskard.drive_pose()
+                    # actions for each shelf
+                    path = interface.query_detect_shelf_layers_path(shelf_id)
+                    interface.detect_shelf_layers_with_logging(shelf_id, path,
+                                                               parent_iri=for_each_shelf_iri,
+                                                               participant_iri=shelf_id)
             if interface.move:
                 with LogNeemArmMotion(interface.kr, for_each_shelf_iri):
                     interface.giskard.drive_pose()

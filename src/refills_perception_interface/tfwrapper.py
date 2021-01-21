@@ -12,7 +12,7 @@ tfBuffer = None
 tf_listener = None
 
 
-def init(tf_buffer_size=15, sleep=5.0):
+def init(tf_buffer_size=15, sleep=10.0):
     """
     If you want to specify the buffer size, call this function manually, otherwise don't worry about it.
     :param tf_buffer_size: in secs

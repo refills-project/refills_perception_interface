@@ -1,5 +1,5 @@
 from __future__ import print_function, division
-
+import roslaunch
 from copy import deepcopy
 
 import PyKDL as kdl
@@ -14,6 +14,7 @@ from rospy import ROSException
 from rospy_message_converter import message_converter
 
 from giskardpy.tfwrapper import pose_to_kdl
+from giskardpy.utils import resolve_ros_iris
 from knowrob_refills.knowrob_wrapper import KnowRob
 from refills_perception_interface.barcode_detection import BarcodeDetector
 from refills_perception_interface.not_hacks import add_bottom_layer_if_not_present
@@ -158,9 +159,10 @@ class FakeRoboSherlock(object):
         :type facing_id: str
         :rtype: int
         """
+        # self.knowrob.compute_shelf_product_type(facing_id)
         # self.knowrob.assert_confidence(facing_id, 0.88)
         if np.random.choice([True]*9+[False]):
-            return 1, None, None
+            return 2, None, None
         return 0, None, None
 
     def start_detect_shelf_layers(self, shelf_system_id):
@@ -209,23 +211,29 @@ class RoboSherlock(FakeRoboSherlock):
         self.barcode_detection = BarcodeDetector(knowrob)
 
         self.robosherlock_srv_name = rospy.get_param('~robosherlock_srv_name', '/{}/query'.format(name))
-        self.ring_light_srv = rospy.ServiceProxy('iai_ringlight_controller', iai_ringlight_in)
+        try:
+            self.ring_light_srv = rospy.ServiceProxy('iai_ringlight_controller', iai_ringlight_in)
+        except:
+            print('cant call ringlight')
 
         self.wait_for_robosherlock()
 
     def set_ring_light(self, value=True):
-        from iai_ringlight_msgs.srv import iai_ringlight_in, iai_ringlight_inRequest
-        rospy.loginfo('calling ring light switch')
-        if value:
-            req = iai_ringlight_inRequest(a=9)
-        else:
-            req = iai_ringlight_inRequest(a=0)
-        r = None
         try:
-            r = self.ring_light_srv.call(req)
+            from iai_ringlight_msgs.srv import iai_ringlight_in, iai_ringlight_inRequest
+            rospy.loginfo('calling ring light switch')
+            if value:
+                req = iai_ringlight_inRequest(a=9)
+            else:
+                req = iai_ringlight_inRequest(a=0)
+            r = None
+            try:
+                r = self.ring_light_srv.call(req)
+            except:
+                self.print_with_prefix('ring_light_switch not available')
+            self.print_with_prefix('ring light switch returned {}'.format(r))
         except:
-            self.print_with_prefix('ring_light_switch not available')
-        self.print_with_prefix('ring light switch returned {}'.format(r))
+            pass
 
     def wait_for_robosherlock(self):
         self.print_with_prefix('waiting for RoboSherlock')
@@ -283,6 +291,27 @@ class RoboSherlock(FakeRoboSherlock):
         self.set_ring_light(True)
         self.barcode_detection.start_listening(floor_id)
         pass
+
+    def launch_barcode_nodes(self):
+        uuid = roslaunch.rlutil.get_or_generate_uuid(None, False)
+        roslaunch.configure_logging(uuid)
+        barcode_launch_file = resolve_ros_iris('package://barcode_finder/launch/barcode_finder.launch')
+        # separator_launch_file = resolve_ros_iris('package://separator_marker_detector/launch/detector.launch')
+        self.barcode_launch = roslaunch.parent.ROSLaunchParent(uuid, [barcode_launch_file])
+        # self.separator_launch = roslaunch.parent.ROSLaunchParent(uuid, [separator_launch_file])
+        self.barcode_launch.start()
+        rospy.sleep(2)
+        # self.separator_launch.start()
+        # rospy.sleep(3)
+        rospy.loginfo("started")
+
+        # 3 seconds later
+
+    def stop_barcode_nodes(self):
+        rospy.sleep(1)
+        self.barcode_launch.shutdown()
+        # self.separator_launch.shutdown()
+
 
     def stop_barcode_detection(self, frame_id):
         return self.barcode_detection.stop_listening()
@@ -371,7 +400,11 @@ class RoboSherlock(FakeRoboSherlock):
                         count += 1
                     else:
                         predicted = r['rs.annotation.Classification'][0]['classname']
-                        expected = self.add_gtin_checksum(r['rs.annotation.Detection'][0]['name'])
+                        try:
+                            expected = self.add_gtin_checksum(r['rs.annotation.Detection'][0]['name'])
+                        except ValueError:
+                            rospy.logwarn('failed to get gtin for unknown product')
+                            # expected = predicted
                 # result_dict = [json.loads(x)['rs.annotation.Detection'] for x in result.answer]
                 # for r in result_dict:
                 #     if r[0]['source'] == 'FacingDetection':
@@ -381,7 +414,7 @@ class RoboSherlock(FakeRoboSherlock):
                 #         count += 1
                 # count = json.loads(result.answer[0])['rs_refills.refills.ProductCount'][0]['product_count']
                 # confidence = [x for x in result_dict if x[0]['source'] == 'FacingDetection'][0][0]['confidence']
-            except:
+            except Exception as e:
                 result.answer = [0, 0]
                 rospy.logerr(result.answer)
             # self.knowrob.assert_confidence(facing_id, confidence)
@@ -486,4 +519,3 @@ class RoboSherlock(FakeRoboSherlock):
 if __name__ == '__main__':
     rospy.init_node('roboscafsdafsdf')
     robosherlock = RoboSherlock(None, check_camera=False)
-    robosherlock.see(0, 0, 0)

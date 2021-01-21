@@ -131,5 +131,7 @@ def update_shelf_system_pose(knowrob, top_layer_id, separators):
     offset.pose.position.y = y_offset
     offset.pose.orientation = Quaternion(*q)
     offset = transform_pose('map', offset)
-    knowrob.belief_at_update(shelf_system_id, offset)
-    rospy.sleep(0.5)
+    doit = True
+    if doit:
+        knowrob.belief_at_update(shelf_system_id, offset)
+        rospy.sleep(0.5)

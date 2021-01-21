@@ -438,12 +438,12 @@ class PathsKmrIiwa(Paths):
         else:
             base_pose.pose.position.x += 0.45
         base_pose = transform_pose('map', base_pose)
+        base_pose.header.stamp = rospy.Time()
 
         full_body_pose = FullBodyPosture()
         full_body_pose.base_pos = base_pose
         full_body_pose.type = FullBodyPosture.BASE
-        full_body_pose.tag = "camera_initial_scan_pose"
-        print("Move to initial scan pose")
+        full_body_pose.tag = "navigate_to_shelf"
         full_body_path.postures.append(full_body_pose)
 
         full_body_pose = FullBodyPosture()
@@ -452,16 +452,15 @@ class PathsKmrIiwa(Paths):
         else:
             full_body_pose.goal_joint_state = self.get_floor_detection_pose_right()
         full_body_pose.type = FullBodyPosture.JOINT
-        full_body_pose.tag = "navigate_to_middle_of_shelf"
-        print("Move Arm joints to place camera in correct position")
+        full_body_pose.tag = "camera_initial_scan_pose"
         full_body_path.postures.append(full_body_pose)
 
         full_body_pose = FullBodyPosture()
         full_body_pose.base_pos = self.cam_pose_in_front_of_shelf(shelf_system_id, x=shelf_system_width / 2,
                                                                   y=-0.47)
+        full_body_pose.base_pos.header.stamp = rospy.Time()
         full_body_pose.type = FullBodyPosture.CAM_FOOTPRINT
-        full_body_pose.tag = "move_camera_top_to_bottom"
-        print("Move camera")
+        full_body_pose.tag = "navigate_to_middle_of_shelf"
         full_body_path.postures.append(full_body_pose)
 
         full_body_pose = FullBodyPosture()
@@ -469,8 +468,7 @@ class PathsKmrIiwa(Paths):
         full_body_pose.camera_pos.header.frame_id = 'camera_link'
         full_body_pose.camera_pos.pose.position = Point(0, 1.45, 0)
         full_body_pose.camera_pos.pose.orientation = Quaternion(0, 0, 0, 1)
-        full_body_pose.tag = "position_camera_floor"
-        print("Point Camera")
+        full_body_pose.tag = "move_camera_top_to_bottom"
         full_body_path.postures.append(full_body_pose)
 
         return full_body_path
@@ -512,6 +510,7 @@ class PathsKmrIiwa(Paths):
                                                self.is_left(shelf_system_id))
         full_body_pose.tag = "position_camera_floor"
         print("position camera in front of facing")
+        full_body_pose.camera_pos.header.stamp = rospy.Time()
         full_body_path.postures.append(full_body_pose)
 
         # base poses
