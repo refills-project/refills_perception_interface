@@ -1,6 +1,5 @@
 import traceback
-from Queue import Empty, Queue
-from multiprocessing import Lock
+from queue import Queue
 
 from actionlib import SimpleActionServer
 from refills_msgs.msg import DetectShelfLayersResult

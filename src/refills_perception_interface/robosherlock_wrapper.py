@@ -1,26 +1,23 @@
 from __future__ import print_function, division
-import roslaunch
+
+import json
 from copy import deepcopy
 
 import PyKDL as kdl
-import json
 import numpy as np
-
+import roslaunch
 import rospy
 from geometry_msgs.msg import PoseStamped, Point, Quaternion
-from robosherlock_msgs.srv import RSQueryService, RSQueryServiceRequest
 from rospy import ROSException
 
-from rospy_message_converter import message_converter
-
-from giskardpy.tfwrapper import pose_to_kdl
-from giskardpy.utils import resolve_ros_iris
+from giskardpy.utils.utils import resolve_ros_iris
 from knowrob_refills.knowrob_wrapper import KnowRob
 from refills_perception_interface.barcode_detection import BarcodeDetector
 from refills_perception_interface.not_hacks import add_bottom_layer_if_not_present
 from refills_perception_interface.separator_detection import SeparatorClustering
 from refills_perception_interface.tfwrapper import transform_pose
 from refills_perception_interface.utils import print_with_prefix, error_with_refix
+from robosherlock_msgs.srv import RSQueryService, RSQueryServiceRequest
 
 MAP = 'map'
 
@@ -56,7 +53,7 @@ class DetectedObject(object):
         self.front_area = self.width * self.height
 
     def fix_dimensions(self, dim1, dim2, dim3):
-        return # fuck it
+        return  # fuck it
         dims = [dim1, dim2, dim3]
         self.height = dims[abs(np.array(dims) - self.height).argmin()]
         dims.remove(self.height)
@@ -68,7 +65,6 @@ class DetectedObject(object):
         # object_T_offset.p.x
 
 
-
 class FakeRoboSherlock(object):
     prefix = 'robosherlock wrapper'
 
@@ -76,6 +72,9 @@ class FakeRoboSherlock(object):
         self.knowrob = knowrob  # type: KnowRob
         self.number_of_facings = num_of_facings
         self.get_all_barcodes()
+
+    def stop_barcode_nodes(self):
+        pass
 
     def print_with_prefix(self, msg):
         print_with_prefix(msg, self.prefix)
@@ -144,7 +143,7 @@ class FakeRoboSherlock(object):
             barcode.pose.orientation.w = 1
             barcode = transform_pose('map', barcode)
             try:
-                if np.random.choice([True]*9+[False]):
+                if np.random.choice([True] * 9 + [False]):
                     barcodes[str(self.barcodes.pop())] = barcode
                 else:
                     rnd_barcode = self.make_rnd_barcode()
@@ -161,7 +160,7 @@ class FakeRoboSherlock(object):
         """
         # self.knowrob.compute_shelf_product_type(facing_id)
         # self.knowrob.assert_confidence(facing_id, 0.88)
-        if np.random.choice([True]*9+[False]):
+        if np.random.choice([True] * 9 + [False]):
             return 2, None, None
         return 0, None, None
 
@@ -198,15 +197,18 @@ class FakeRoboSherlock(object):
     def set_ring_light(self, value=True):
         pass
 
+    def launch_barcode_nodes(self):
+        pass
+
 
 class RoboSherlock(FakeRoboSherlock):
     def __init__(self, knowrob, name='RoboSherlock', check_camera=True):
-        from iai_ringlight_msgs.srv import iai_ringlight_in, iai_ringlight_inRequest
+        from iai_ringlight_msgs.srv import iai_ringlight_in
         self.check_camera = check_camera
         self.knowrob = knowrob  # type: KnowRob
         # TODO camera topics as ros param
         self.wait_for_rgb_camera()
-        self.wait_for_realsense()
+        # self.wait_for_realsense()
         self.separator_detection = SeparatorClustering(knowrob)
         self.barcode_detection = BarcodeDetector(knowrob)
 
@@ -277,7 +279,7 @@ class RoboSherlock(FakeRoboSherlock):
     def add_separators(self, separators, ys):
         s = separators[0]
         for y in ys:
-            new_s = deepcopy(s) #type: PoseStamped
+            new_s = deepcopy(s)  # type: PoseStamped
             new_s.pose.position.y += y
             separators.append(new_s)
         separators = sorted(separators, key=lambda x: x.pose.position.z)
@@ -311,7 +313,6 @@ class RoboSherlock(FakeRoboSherlock):
         rospy.sleep(1)
         self.barcode_launch.shutdown()
         # self.separator_launch.shutdown()
-
 
     def stop_barcode_detection(self, frame_id):
         return self.barcode_detection.stop_listening()
@@ -422,20 +423,19 @@ class RoboSherlock(FakeRoboSherlock):
         return count, predicted, expected
 
     def add_gtin_checksum(self, gtin):
-        s = int(gtin[0])*1 + \
-               int(gtin[1])*3 + \
-               int(gtin[2])*1 + \
-               int(gtin[3])*3 + \
-               int(gtin[4])*1 + \
-               int(gtin[5])*3 + \
-               int(gtin[6])*1 + \
-               int(gtin[7])*3 + \
-               int(gtin[8])*1 + \
-               int(gtin[9])*3 + \
-               int(gtin[10])*1 + \
-               int(gtin[11])*3
-        return gtin+str(((s//10)+1) * 10 - s)
-
+        s = int(gtin[0]) * 1 + \
+            int(gtin[1]) * 3 + \
+            int(gtin[2]) * 1 + \
+            int(gtin[3]) * 3 + \
+            int(gtin[4]) * 1 + \
+            int(gtin[5]) * 3 + \
+            int(gtin[6]) * 1 + \
+            int(gtin[7]) * 3 + \
+            int(gtin[8]) * 1 + \
+            int(gtin[9]) * 3 + \
+            int(gtin[10]) * 1 + \
+            int(gtin[11]) * 3
+        return gtin + str(((s // 10) + 1) * 10 - s)
 
     def see(self, depth, width, height, object_type, num_detections=3):
         """

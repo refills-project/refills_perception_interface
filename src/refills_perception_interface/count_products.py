@@ -4,7 +4,6 @@ from refills_msgs.msg import DetectShelfLayersGoal, DetectShelfLayersResult, Det
 from refills_perception_interface.action_server_behavior import PerceptionBehavior
 from refills_perception_interface.utils import print_with_prefix
 
-
 class CountProductsBehavior(PerceptionBehavior):
     prefix = 'count products'
     def start_perception(self, goal):

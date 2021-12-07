@@ -30,7 +30,7 @@ class QueryBehavior(MyBahaviour):
         if self.get_blackboard().robot == 'donbot':
             self.paths = Paths(self.get_knowrob())
         else:
-            self.paths = PathsKmrIiwa(self.get_knowrob())
+            self.paths = PathsKmrIiwa(self.get_knowrob()) # type: Paths
         self.query_shelf_systems_srv = rospy.Service('~query_shelf_systems', QueryShelfSystems,
                                                      self.query_shelf_systems_cb)
         self.query_shelf_layers_srv = rospy.Service('~query_shelf_layers', QueryShelfLayers, self.query_shelf_layers_cb)
@@ -155,10 +155,11 @@ class QueryBehavior(MyBahaviour):
         """
         print_with_prefix('called', 'query_detect_shelf_layers_path')
         r = QueryDetectShelfLayersPathResponse()
+        cam_focus = rospy.get_param('~cam_focus', default=0.5)
         if self.get_knowrob().shelf_system_exists(data.id):
             r.error = QueryDetectShelfLayersPathResponse.SUCCESS
             # try:
-            r.path = self.paths.get_detect_shelf_layers_path(data.id)
+            r.path = self.paths.get_detect_shelf_layers_path(data.id, cam_focus=cam_focus)
             # except:
             #     rospy.logerr('path error')
         else:
@@ -173,10 +174,11 @@ class QueryBehavior(MyBahaviour):
         """
         print_with_prefix('called', 'query_detect_facings_path')
         r = QueryDetectFacingsPathResponse()
+        cam_focus = rospy.get_param('~cam_focus', default=0.5)
         if self.get_knowrob().shelf_layer_exists(data.id):
             r.error = QueryDetectFacingsPathResponse.SUCCESS
             try:
-                r.path = self.paths.get_detect_facings_path(data.id)
+                r.path = self.paths.get_detect_facings_path(data.id, cam_focus=cam_focus)
             except:
                 rospy.logerr('path error')
         else:
@@ -191,10 +193,11 @@ class QueryBehavior(MyBahaviour):
         """
         print_with_prefix('called', 'query_count_products_posture')
         r = QueryCountProductsPostureResponse()
+        cam_focus = rospy.get_param('~cam_focus', default=0.5)
         if self.get_knowrob().facing_exists(data.id):
             r.error = QueryCountProductsPostureResponse.SUCCESS
             # try:
-            r.posture = self.paths.get_count_product_posture(data.id)
+            r.posture = self.paths.get_count_product_posture(data.id, cam_focus=cam_focus)
             # except:
             #     rospy.logerr('path error')
 
@@ -205,7 +208,7 @@ class QueryBehavior(MyBahaviour):
 
     def query_neem_logging(self, data):
         if (data.begin_act > data.end_act):
-            print data.tag
+            print(data.tag)
         """
         :type data: QueryLoggingRequest
         :rtype: QueryLoggingResponse
